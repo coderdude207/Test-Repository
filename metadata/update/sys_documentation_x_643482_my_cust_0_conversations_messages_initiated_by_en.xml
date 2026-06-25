@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+    <sys_documentation element="initiated_by" label="Initiated By" language="en" table="x_643482_my_cust_0_conversations_messages">
+        <sys_documentation action="INSERT_OR_UPDATE">
+            <element>initiated_by</element>
+            <help/>
+            <hint/>
+            <label>Initiated By</label>
+            <language>en</language>
+            <name>x_643482_my_cust_0_conversations_messages</name>
+            <plural>Initiated Bys</plural>
+            <sys_class_name>sys_documentation</sys_class_name>
+            <sys_created_by>admin</sys_created_by>
+            <sys_created_on>2026-05-31 08:17:25</sys_created_on>
+            <sys_id>cd1fce7b83850b107e20a270ceaad3b7</sys_id>
+            <sys_mod_count>0</sys_mod_count>
+            <sys_name>Initiated By</sys_name>
+            <sys_package display_value="My Custom AI Agent" source="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_package>
+            <sys_policy/>
+            <sys_scope display_value="My Custom AI Agent">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+            <sys_update_name>sys_documentation_x_643482_my_cust_0_conversations_messages_initiated_by_en</sys_update_name>
+            <sys_updated_by>admin</sys_updated_by>
+            <sys_updated_on>2026-05-31 08:17:25</sys_updated_on>
+            <url/>
+            <url_target/>
+        </sys_documentation>
+    </sys_documentation>
+</record_update>

@@ -1,0 +1,293 @@
+<!-- ================================================================
+     BUDDY WIDGET — HTML Template
+     ServiceNow Service Portal Widget
+     All icons are the exact SVGs from the original Buddy design.
+     ================================================================ -->
+<div class="buddy-app" ng-class="{'dark': c.dark}">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="bdy-sidebar" ng-class="{'bdy-sidebar--collapsed': c.sidebarCollapsed, 'bdy-sidebar--mobile-open': c.mobileSidebarOpen}">
+
+    <div class="bdy-sb-top">
+      <div class="bdy-brand">
+        <!-- Spark / generate glyph — exact sparkSVG(26) from design -->
+        <svg class="bdy-mark" viewBox="0 0 32 32" width="26" height="26" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+          <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+        </svg>
+        <span class="bdy-name">Buddy</span>
+      </div>
+      <!-- Sidebar / panel toggle icon — exact from design -->
+      <button class="bdy-icon-btn" title="Collapse sidebar" ng-click="c.toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+          <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+          <path d="M9 4v16"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="bdy-sb-scroll">
+      <!-- New chat — plus / compose icon from design -->
+      <button class="bdy-nav-item bdy-newchat" ng-click="c.newChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" width="16" height="16">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        New chat
+      </button>
+
+      <nav class="bdy-nav-list">
+        <!-- Chats — speech bubble icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'chats'}" ng-click="c.showHome()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.7L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/>
+          </svg>
+          Chats
+        </button>
+        <!-- My Requests — trash/basket icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'requests'}" ng-click="c.navigate('requests')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h16M4 7l1.2 12.2A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 2-1.8L20 7M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+          </svg>
+          My Requests
+        </button>
+        <!-- Knowledge Base — document icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'kb'}" ng-click="c.navigate('kb')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>
+            <path d="M14 3v6h6"/>
+          </svg>
+          Knowledge Base
+        </button>
+      </nav>
+
+      <!-- Recent chats — populated from server (last 5 incidents) -->
+      <!-- Original design renders these as plain text buttons with no icon -->
+      <div ng-show="c.recentChats.length > 0">
+        <div class="bdy-sb-label">Recent</div>
+        <div class="bdy-recents">
+          <button class="bdy-recent-item"
+                  ng-repeat="chat in c.recentChats track by chat.id"
+                  ng-class="{'active': c.activeRecentId === chat.id}"
+                  ng-click="c.loadRecentChat(chat)">
+            {{chat.title}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bdy-sb-bottom">
+      <div class="bdy-profile">
+        <span class="bdy-avatar">{{c.userInitials}}</span>
+        <span class="bdy-pinfo">
+          <div class="bdy-pname">{{c.userName}}</div>
+          <div class="bdy-pplan">{{c.userDept}}</div>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Scrim — closes mobile sidebar when tapped -->
+  <div class="bdy-scrim" ng-class="{'bdy-scrim--show': c.mobileSidebarOpen}" ng-click="c.closeMobileSidebar()"></div>
+
+  <!-- ==================== MAIN ==================== -->
+  <main class="bdy-main">
+
+    <!-- Topbar -->
+    <div class="bdy-topbar">
+      <div class="bdy-topbar-left">
+        <!-- Panel/sidebar toggle — same icon as sidebar collapse button -->
+        <button class="bdy-icon-btn" ng-click="c.toggleSidebar()" title="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+            <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+            <path d="M9 4v16"/>
+          </svg>
+        </button>
+        <span class="bdy-tb-pill" ng-show="c.view === 'thread'">{{c.threadTitle}}</span>
+      </div>
+      <div class="bdy-topbar-right">
+        <!-- Theme toggle — exact sun/moon SVGs from design -->
+        <button class="bdy-icon-btn" ng-click="c.toggleTheme()" title="Toggle theme">
+          <!-- Sun icon (shown in dark mode) — exact from design -->
+          <svg ng-show="c.dark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.2"/>
+            <path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>
+          </svg>
+          <!-- Moon icon (shown in light mode) — exact from design -->
+          <svg ng-hide="c.dark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ HOME VIEW ============ -->
+    <div class="bdy-stage" ng-show="c.view === 'home'">
+      <div class="bdy-home">
+
+        <div class="bdy-greeting">
+          <!-- Greeting spark mark — exact sparkSVG(42) from design -->
+          <svg class="bdy-greet-mark" viewBox="0 0 32 32" width="42" height="42" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+            <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+          </svg>
+          <h1 class="bdy-greeting-text">Hey there, {{c.firstName}}</h1>
+        </div>
+
+        <div class="bdy-sub-heading">How can I help you today?</div>
+
+        <!-- Home composer -->
+        <div class="bdy-composer">
+          <textarea class="bdy-field"
+                    id="bdy-home-field"
+                    rows="1"
+                    placeholder="Ask Buddy anything…"
+                    ng-model="c.homeInput"
+                    ng-keydown="c.homeKeyDown($event)"></textarea>
+          <div class="bdy-composer-row">
+            <div class="bdy-composer-left">
+              <span class="bdy-model-pill">
+                Buddy 1.0
+                <span class="bdy-effort">Standard</span>
+                <!-- Chevron-down from design -->
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </span>
+            </div>
+            <div class="bdy-composer-right">
+              <!-- Send — up-arrow from design (homeSend / dockSend) -->
+              <button class="bdy-send-btn" ng-click="c.homeSubmit()" ng-disabled="!c.homeInput.trim()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick-action chips — icons injected from client script as SVG strings -->
+        <div class="bdy-chips">
+          <button class="bdy-chip"
+                  ng-repeat="chip in c.chips track by $index"
+                  ng-click="c.startConversation(chip.prompt)">
+            <span class="bdy-chip-icon" ng-bind-html="chip.icon"></span>
+            {{chip.label}}
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ THREAD VIEW ============ -->
+    <div class="bdy-thread-wrap" ng-show="c.view === 'thread'">
+
+      <div class="bdy-thread" id="bdy-thread">
+        <div class="bdy-thread-inner">
+
+          <!-- ---- Each message ---- -->
+          <div ng-repeat="msg in c.messages track by $index"
+               class="bdy-msg-row"
+               ng-class="msg.role === 'user' ? 'bdy-user-row' : 'bdy-bot-row'">
+
+            <!-- Bot avatar — exact sparkSVG(20) from design -->
+            <div class="bdy-bot-avatar" ng-show="msg.role === 'bot'">
+              <svg viewBox="0 0 32 32" width="20" height="20" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+                <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+              </svg>
+            </div>
+
+            <!-- Bubble -->
+            <div class="bdy-bubble" ng-class="msg.role === 'user' ? 'bdy-bubble-user' : 'bdy-bubble-bot'">
+
+              <!-- Plain user text -->
+              <div ng-if="msg.role === 'user'" class="bdy-bubble-text">{{msg.text}}</div>
+
+              <!-- Bot: text (html) -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'text'" class="bdy-bubble-text" ng-bind-html="msg.html"></div>
+
+              <!-- Bot: request / incident cards -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'cards'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <div class="bdy-req-card" ng-repeat="card in msg.cards track by $index">
+                  <!-- Card icon — SVG string from client script ic object -->
+                  <span class="bdy-rc-icon" ng-bind-html="card.icon"></span>
+                  <span class="bdy-rc-main">
+                    <div class="bdy-rc-title">{{card.title}}</div>
+                    <div class="bdy-rc-sub">{{card.sub}}</div>
+                  </span>
+                  <span class="bdy-rc-status" ng-class="'bdy-status-' + card.statusKey">{{card.statusText}}</span>
+                </div>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+              <!-- Bot: ordered steps -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'steps'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <ol class="bdy-steps">
+                  <li ng-repeat="step in msg.steps track by $index" ng-bind-html="step"></li>
+                </ol>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+              <!-- Bot: bullet list -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'list'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <ul class="bdy-bullet-list">
+                  <li ng-repeat="item in msg.items track by $index" ng-bind-html="item"></li>
+                </ul>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ---- Thinking dots — same spark avatar as bot messages ---- -->
+          <div class="bdy-msg-row bdy-bot-row" ng-show="c.thinking">
+            <div class="bdy-bot-avatar">
+              <svg viewBox="0 0 32 32" width="20" height="20" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+                <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+              </svg>
+            </div>
+            <div class="bdy-bubble bdy-bubble-bot bdy-thinking-bubble">
+              <span class="bdy-dot"></span>
+              <span class="bdy-dot"></span>
+              <span class="bdy-dot"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Thread composer (dock) -->
+      <div class="bdy-dock">
+        <div class="bdy-dock-inner">
+          <textarea class="bdy-field bdy-dock-field"
+                    id="bdy-dock-field"
+                    rows="1"
+                    placeholder="Reply to Buddy…"
+                    ng-model="c.dockInput"
+                    ng-keydown="c.dockKeyDown($event)"></textarea>
+          <div class="bdy-composer-row">
+            <div class="bdy-composer-left">
+              <span class="bdy-model-pill">Buddy 1.0</span>
+            </div>
+            <div class="bdy-composer-right">
+              <!-- Send — same up-arrow as home composer -->
+              <button class="bdy-send-btn"
+                      ng-click="c.dockSubmit()"
+                      ng-disabled="!c.dockInput.trim() || c.thinking">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /thread-wrap -->
+
+  </main>
+</div>

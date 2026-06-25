@@ -8,6 +8,7 @@ SPWidget({
     controllerAs: '',
     htmlTemplate: Now.include('./sp_widget_llm_assistant/template.html'),
     customCss: Now.include('./sp_widget_llm_assistant/style.scss'),
-    dataTable: '',
+    dataTable: 'sp_instance',
     id: 'llm-assistant',
+    linkScript: Now.include('./sp_widget_llm_assistant/link-script.js'),
 })

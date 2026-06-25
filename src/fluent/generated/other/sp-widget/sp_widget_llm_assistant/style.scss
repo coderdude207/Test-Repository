@@ -1,0 +1,384 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Container ─────────────────────────────────────── */
+.llm-container {
+  background: #0f0f13;
+  border-radius: 16px;
+  height: 620px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'SF Pro Text', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #e2e2e8;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.llm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.llm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.llm-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #f0f0f6;
+}
+
+/* Pulsing green status dot */
+.llm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  animation: llm-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes llm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+}
+
+.llm-clear-btn {
+  background: none;
+  border: none;
+  color: #6b6b7e;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.llm-clear-btn:hover {
+  color: #e2e2e8;
+  background: rgba(255,255,255,0.07);
+}
+
+/* ── Error banner ────────────────────────────────────── */
+.llm-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: rgba(239, 68, 68, 0.15);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  flex-shrink: 0;
+}
+
+.llm-error-text {
+  font-size: 13px;
+  color: #fca5a5;
+}
+
+.llm-error-dismiss {
+  background: none;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.llm-error-dismiss:hover { opacity: 1; }
+
+/* ── Message area ────────────────────────────────────── */
+.llm-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+/* Thin custom scrollbar */
+.llm-messages::-webkit-scrollbar { width: 4px; }
+.llm-messages::-webkit-scrollbar-track { background: transparent; }
+.llm-messages::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+}
+.llm-messages::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Empty state ─────────────────────────────────────── */
+.llm-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+.llm-empty-icon {
+  font-size: 36px;
+  color: #6366f1;
+  animation: llm-rotate 8s linear infinite;
+}
+
+@keyframes llm-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.llm-empty-text {
+  font-size: 15px;
+  color: #8888a0;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Message rows ────────────────────────────────────── */
+.llm-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  animation: llm-slide-in 0.25s ease-out;
+}
+
+@keyframes llm-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.llm-row-user {
+  flex-direction: row-reverse;
+}
+
+.llm-row-assistant {
+  flex-direction: row;
+}
+
+/* ── Avatars ─────────────────────────────────────────── */
+.llm-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.llm-avatar-user {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 13px;
+}
+
+.llm-avatar-assistant {
+  background: #1e1e2e;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #6366f1;
+  font-size: 14px;
+}
+
+/* ── Bubbles ─────────────────────────────────────────── */
+.llm-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.llm-bubble-user {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.llm-bubble-assistant {
+  background: #1e1e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d4d4e0;
+  border-bottom-left-radius: 4px;
+}
+
+/* ── Thinking dots ───────────────────────────────────── */
+.llm-thinking {
+  display: flex;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.llm-dot {
+  width: 6px;
+  height: 6px;
+  background: #6366f1;
+  border-radius: 50%;
+  animation: llm-bounce 1.2s ease-in-out infinite;
+}
+
+.llm-dot:nth-child(2) { animation-delay: 0.2s; }
+.llm-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes llm-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Blinking cursor ─────────────────────────────────── */
+.llm-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  animation: llm-blink 1s step-start infinite;
+  opacity: 1;
+  color: #6366f1;
+}
+
+@keyframes llm-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Inline markdown ─────────────────────────────────── */
+.llm-bubble strong { font-weight: 600; color: #f0f0f6; }
+.llm-bubble em     { font-style: italic; color: #c4b5fd; }
+
+.llm-bubble ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.llm-bubble li {
+  margin: 2px 0;
+}
+
+.llm-bubble code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12.5px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.llm-bubble pre {
+  background: #0d0d14;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.llm-bubble pre code {
+  background: none;
+  padding: 0;
+  color: #d4d4e0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ── Input area ──────────────────────────────────────── */
+.llm-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.llm-input-area:focus-within {
+  border-top-color: rgba(99, 102, 241, 0.5);
+}
+
+.llm-textarea {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #e2e2e8;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 9px 13px;
+  resize: none;
+  outline: none;
+  min-height: 38px;
+  max-height: 160px;
+  overflow-y: auto;
+  transition: border-color 0.15s;
+}
+
+.llm-textarea::placeholder { color: #55556a; }
+
+.llm-textarea:focus {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.llm-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Send button — 34px square */
+.llm-send-btn,
+.llm-stop-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.llm-send-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+
+.llm-send-btn:hover { transform: scale(1.08); }
+.llm-send-btn:active { transform: scale(0.96); }
+
+.llm-stop-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.llm-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.05);
+}
+
+/* ── Hint text ───────────────────────────────────────── */
+.llm-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #3a3a50;
+  padding: 4px 0 10px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}

@@ -1,0 +1,103 @@
+<div class="llm-container">
+
+  <!-- Header -->
+  <div class="llm-header">
+    <div class="llm-header-left">
+      <span class="llm-status-dot"></span>
+      <span class="llm-title">AI Assistant</span>
+    </div>
+    <button class="llm-clear-btn" ng-click="c.clearChat()" title="Clear chat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"></path>
+        <path d="M10 11v6M14 11v6"></path>
+        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Error banner -->
+  <div class="llm-error-banner" ng-if="data.errorMsg">
+    <span class="llm-error-text">{{data.errorMsg}}</span>
+    <button class="llm-error-dismiss" ng-click="data.errorMsg = null">&#x2715;</button>
+  </div>
+
+  <!-- Message area -->
+  <div class="llm-messages" id="llm-scroll-area">
+
+    <!-- Empty state -->
+    <div class="llm-empty" ng-if="data.messages.length === 0">
+      <div class="llm-empty-icon">✦</div>
+      <p class="llm-empty-text">Hello, {{data.userName}}! How can I help you today?</p>
+    </div>
+
+    <!-- Messages -->
+    <div class="llm-message-row"
+         ng-repeat="msg in data.messages"
+         ng-class="msg.role === 'user' ? 'llm-row-user' : 'llm-row-assistant'">
+
+      <!-- Assistant avatar -->
+      <div class="llm-avatar llm-avatar-assistant" ng-if="msg.role !== 'user'">✦</div>
+
+      <!-- Bubble -->
+      <div class="llm-bubble"
+           ng-class="msg.role === 'user' ? 'llm-bubble-user' : 'llm-bubble-assistant'">
+
+        <!-- Three-dot thinking indicator — shown while waiting for first chunk -->
+        <div class="llm-thinking" ng-if="data.isThinking && msg.streaming && !msg.content">
+          <span class="llm-dot"></span>
+          <span class="llm-dot"></span>
+          <span class="llm-dot"></span>
+        </div>
+
+        <!-- Markdown content -->
+        <span ng-bind-html="msg.html" ng-if="msg.content"></span>
+
+        <!-- Blinking cursor while streaming -->
+        <span class="llm-cursor" ng-if="msg.streaming && msg.content">&#x2587;</span>
+      </div>
+
+      <!-- User avatar -->
+      <div class="llm-avatar llm-avatar-user" ng-if="msg.role === 'user'">
+        {{data.userName.charAt(0).toUpperCase()}}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Input area -->
+  <div class="llm-input-area">
+    <textarea
+      id="llm-textarea"
+      class="llm-textarea"
+      ng-model="data.userInput"
+      ng-keydown="c.onKeydown($event)"
+      placeholder="Ask me anything…"
+      rows="1"
+      ng-disabled="data.isStreaming"></textarea>
+
+    <!-- Send button -->
+    <button class="llm-send-btn"
+            ng-if="!data.isStreaming"
+            ng-click="c.sendMessage()"
+            title="Send message">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+
+    <!-- Stop button -->
+    <button class="llm-stop-btn"
+            ng-if="data.isStreaming"
+            ng-click="c.stopStream()"
+            title="Stop generation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      </svg>
+    </button>
+  </div>
+
+  <div class="llm-hint">Enter to send &middot; Shift+Enter for new line</div>
+
+</div>

@@ -1,0 +1,207 @@
+<div class="app" ng-class="{'theme-dark': c.theme === 'dark'}">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" ng-class="{'collapsed': c.sidebarCollapsed, 'mobile-open': c.mobileSidebarOpen}">
+    <div class="sb-top">
+      <div class="brand">
+        <span class="mark" ng-bind-html="c.sparkSVG26"></span>
+        <span class="name">Buddy</span>
+      </div>
+      <div class="sb-icons">
+        <button class="icon-btn" title="Search" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        </button>
+        <button class="icon-btn" ng-click="c.toggleSidebar()" title="Collapse sidebar" aria-label="Collapse sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="sb-scroll">
+      <button class="nav-item newchat" ng-click="c.showHome()">
+        <span class="plus">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </span>
+        New chat
+      </button>
+
+      <nav style="margin-top:6px;display:flex;flex-direction:column;gap:1px;">
+        <button class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.7L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/></svg>
+          Chats
+        </button>
+        <button class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 7l1.2 12.2A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 2-1.8L20 7M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+          My Requests
+        </button>
+        <button class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6"/></svg>
+          Knowledge Base
+        </button>
+      </nav>
+
+      <div class="sb-label">Recent</div>
+      <div class="recents">
+        <button class="recent"
+          ng-repeat="conv in c.data.conversations track by conv.sysId"
+          ng-class="{'active': c.currentConversationSysId === conv.sysId}"
+          ng-click="c.loadConversation(conv)">
+          {{conv.title}}
+        </button>
+        <div class="recent-empty" ng-show="!c.data.conversations || c.data.conversations.length === 0">
+          No conversations yet
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-bottom">
+      <button class="profile">
+        <span class="avatar">{{c.userInitials}}</span>
+        <span class="pinfo">
+          <div class="pname">{{c.userName}}</div>
+          <div class="pplan">Employee · IT</div>
+        </span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="scrim" ng-class="{'show': c.mobileSidebarOpen}" ng-click="c.closeMobileSidebar()"></div>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div class="left">
+        <button class="icon-btn" ng-click="c.toggleSidebar()" title="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 4v16"/></svg>
+        </button>
+        <button class="tb-pill">
+          <span>{{c.currentTitle}}</span>
+        </button>
+      </div>
+      <div class="left">
+        <button class="icon-btn" ng-click="c.toggleTheme()" title="Toggle theme" aria-label="Toggle theme" ng-bind-html="c.theme === 'light' ? c.moonSVG : c.sunSVG"></button>
+      </div>
+    </div>
+
+    <!-- HOME -->
+    <div class="stage" ng-show="c.view === 'home'">
+      <div class="home">
+        <div class="greeting">
+          <span class="gmark" ng-bind-html="c.sparkSVG42"></span>
+          <h1>Hey there, {{c.firstName}}</h1>
+        </div>
+
+        <div class="composer" ng-class="{'focused': c.homeFieldFocused}">
+          <textarea class="field" id="buddyHomeField"
+            ng-model="c.userInput"
+            rows="1"
+            placeholder="Ask Buddy anything, or type / for skills"
+            ng-focus="c.homeFieldFocused = true"
+            ng-blur="c.homeFieldFocused = false"
+            ng-keydown="c.handleKeydown($event)"
+            ng-keyup="c.autoGrow($event.target)"
+            ng-disabled="c.isStreaming">
+          </textarea>
+          <div class="composer-row">
+            <div class="composer-left">
+              <button class="cbtn" title="Attach">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="composer-right">
+              <button class="model-pill">
+                Buddy 1.0 <span class="effort">Standard</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+              <button class="cbtn" title="Voice">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+              </button>
+              <button class="send-btn"
+                ng-click="c.sendMessage()"
+                ng-disabled="c.isStreaming || !c.userInput.trim()"
+                title="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="chips">
+          <button class="chip" ng-repeat="chip in c.chips" ng-click="c.useChip(chip)">
+            <span ng-bind-html="chip.icon"></span>
+            <span>{{chip.label}}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- THREAD -->
+    <div class="thread" id="buddyThread" ng-show="c.view === 'thread'">
+      <div class="thread-inner">
+        <div class="msg"
+          ng-repeat="msg in c.messages track by $index"
+          ng-class="msg.role === 'user' ? 'user' : 'bot'">
+          <div class="who">
+            <span ng-if="msg.role === 'user'">{{c.userInitials}}</span>
+            <span ng-if="msg.role !== 'user'" ng-bind-html="c.sparkSVG20"></span>
+          </div>
+          <div class="body">
+            <div class="role">{{msg.role === 'user' ? 'You' : 'Buddy'}}</div>
+            <div class="content">
+              <span ng-bind-html="msg.html || msg.content"></span>
+              <span class="cursor" ng-show="msg.streaming">▋</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thinking loader -->
+        <div class="msg thinking" ng-show="c.isStreaming && !c.streamingStarted">
+          <div class="who" ng-bind-html="c.sparkSVG20"></div>
+          <div class="ldr-body">
+            <div class="ldr-burst">
+              <div class="burst-wrap">
+                <!-- Upload your GIF in ServiceNow and paste its URL in the src below -->
+                <img class="spark-gif" src="" alt="" width="30" height="30">
+              </div>
+              <span>Buddy is thinking</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCKED COMPOSER -->
+    <div class="dock" ng-show="c.view === 'thread'">
+      <div class="dock-inner">
+        <div class="composer">
+          <textarea class="field" id="buddyDockField"
+            ng-model="c.userInput"
+            rows="1"
+            placeholder="Reply to Buddy…"
+            ng-keydown="c.handleKeydown($event)"
+            ng-keyup="c.autoGrow($event.target)"
+            ng-disabled="c.isStreaming">
+          </textarea>
+          <div class="composer-row">
+            <div class="composer-left">
+              <button class="cbtn" title="Attach">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="composer-right">
+              <button class="model-pill">
+                Buddy 1.0 <span class="effort">Standard</span>
+              </button>
+              <button class="send-btn"
+                ng-click="c.sendMessage()"
+                ng-disabled="c.isStreaming || !c.userInput.trim()"
+                title="Send">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

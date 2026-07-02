@@ -51,14 +51,5 @@ LLMProxyHelper.prototype = {
         }
     },
 
-    /**
-     * Returns the current date and time as a display string in the user's session timezone.
-     * @returns {string} e.g. "2026-07-02 14:35:00"
-     */
-    getCurrentTime: function() {
-        var now = new GlideDateTime();
-        return now.getDisplayValue();
-    },
-
     type: 'LLMProxyHelper'
 };

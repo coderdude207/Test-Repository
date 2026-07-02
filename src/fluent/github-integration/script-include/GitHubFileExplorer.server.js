@@ -124,8 +124,9 @@ GitHubFileExplorer.prototype = {
         }
 
         // GitHub embeds newlines in the base64 payload — strip them before decoding
+        // GlideStringUtil.base64Decode is global-scope only; use Java directly in scoped apps
         var rawBase64 = (parsed.content || '').replace(/\n/g, '').replace(/\r/g, '');
-        var decoded   = GlideStringUtil.base64Decode(rawBase64);
+        var decoded   = String(new java.lang.String(java.util.Base64.getDecoder().decode(rawBase64)));
 
         return {
             content: decoded,

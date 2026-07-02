@@ -24,7 +24,8 @@ LLMProxyHelper.prototype = {
         var payload = userId + '|' + issuedAt + '|' + expiry;
         var secret = gs.getProperty('llm.token.secret', '');
         var signature = GlideDigest.getSHA256Base64(payload + secret);
-        return GlideStringUtil.base64Encode(payload) + '.' + signature;
+        // GlideStringUtil.base64Encode is global-scope only; use Java directly in scoped apps
+        return String(java.util.Base64.getEncoder().encodeToString(new java.lang.String(payload).getBytes('UTF-8'))) + '.' + signature;
     },
 
     validateToken: function(token) {
@@ -40,7 +41,8 @@ LLMProxyHelper.prototype = {
             }
             var encodedPayload = token.substring(0, dotIdx);
             var signature = token.substring(dotIdx + 1);
-            var payload = GlideStringUtil.base64Decode(encodedPayload);
+            // GlideStringUtil.base64Decode is global-scope only; use Java directly in scoped apps
+            var payload = String(new java.lang.String(java.util.Base64.getDecoder().decode(encodedPayload)));
             var secret = gs.getProperty('llm.token.secret', '');
             var expectedSig = GlideDigest.getSHA256Base64(payload + secret);
             if (signature !== expectedSig) {

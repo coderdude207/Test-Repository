@@ -51,10 +51,5 @@ LLMProxyHelper.prototype = {
         }
     },
 
-    getCurrentTime: function() {
-        var now = new GlideDateTime();
-        return now.getDisplayValue();
-    },
-
     type: 'LLMProxyHelper'
 };

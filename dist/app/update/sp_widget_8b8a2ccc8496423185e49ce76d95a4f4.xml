@@ -1,0 +1,801 @@
+<?xml version="1.0"?>
+<record_update table="sp_widget">
+  <sp_widget action="INSERT_OR_UPDATE">
+    <sys_id>8b8a2ccc8496423185e49ce76d95a4f4</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sp_widget_8b8a2ccc8496423185e49ce76d95a4f4</sys_update_name>
+    <category>custom</category>
+    <client_script><![CDATA[api.controller = function($scope, $sce, $timeout, $http) {
+    const c = this;
+
+    // ── State ────────────────────────────────────────────────────────────────
+    c.data.messages          = c.data.messages          || [];
+    c.data.userInput         = '';
+    c.data.isStreaming       = false;
+    c.data.isThinking        = false;
+    c.data.errorMsg          = null;
+
+    // Private — not exposed to the template
+    let _abortController      = null;
+    let _conversationHistory  = [];   // [{role, content}] — only clean fields for API calls
+
+    // ── Public methods ───────────────────────────────────────────────────────
+
+    c.onKeydown = function(evt) {
+        if (evt.key === 'Enter' && !evt.shiftKey) {
+            evt.preventDefault();
+            c.sendMessage();
+        }
+    };
+
+    c.clearChat = function() {
+        if (_abortController) _abortController.abort();
+        c.data.messages         = [];
+        c.data.userInput        = '';
+        c.data.isStreaming      = false;
+        c.data.isThinking       = false;
+        c.data.errorMsg         = null;
+        _conversationHistory    = [];
+        _resetTextareaHeight();
+    };
+
+    c.stopStream = function() {
+        if (_abortController) _abortController.abort();
+    };
+
+    c.sendMessage = function() {
+        const text = (c.data.userInput || '').trim();
+        if (!text || c.data.isStreaming) return;
+
+        // Push user message
+        c.data.messages.push({ role: 'user', content: text, html: $sce.trustAsHtml(_renderMarkdown(text)) });
+        _conversationHistory.push({ role: 'user', content: text });
+
+        c.data.userInput    = '';
+        c.data.isThinking   = true;
+        c.data.isStreaming  = true;
+        c.data.errorMsg     = null;
+        _resetTextareaHeight();
+        _scrollToBottom();
+
+        // Step 1 — fetch a short-lived token
+        $http.get('/api/x_643482_my_cust_0/llm_proxy/token')
+            .then(function(res) {
+                const meta = res.data;
+                // Step 2 — exchange token for LLM credentials
+                return $http.post('/api/x_643482_my_cust_0/llm_proxy/chat', { token: meta.token })
+                    .then(function(credRes) {
+                        const creds = Object.assign({}, credRes.data, { model: meta.model, endpoint: meta.endpoint });
+                        _streamFromLLM(creds);
+                    });
+            })
+            .catch(function(err) {
+                $scope.$apply(function() {
+                    c.data.errorMsg    = 'Failed to connect: ' + ((err.data && err.data.error) || err.statusText || 'unknown error');
+                    c.data.isStreaming = false;
+                    c.data.isThinking  = false;
+                });
+            });
+    };
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    function _streamFromLLM(creds) {
+        _abortController = new AbortController();
+
+        const assistantMsg = {
+            role:      'assistant',
+            content:   '',
+            html:      $sce.trustAsHtml(''),
+            streaming: true,
+        };
+        c.data.messages.push(assistantMsg);
+        _scrollToBottom();
+
+        const body = {
+            model:    creds.model,
+            messages: _conversationHistory.slice(),   // only {role, content}
+            stream:   true,
+        };
+
+        // Build headers — omit Authorization for local Ollama (no key configured)
+        const headers = { 'Content-Type': 'application/json' };
+        if (creds.apiKey) {
+            headers['Authorization'] = 'Bearer ' + creds.apiKey;
+        }
+
+        fetch(creds.endpoint, {
+            method:  'POST',
+            headers: headers,
+            body:   JSON.stringify(body),
+            signal: _abortController.signal,
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error('LLM returned ' + response.status + ' ' + response.statusText);
+            }
+            $scope.$apply(function() { c.data.isThinking = false; });
+            _readStream(response.body.getReader(), assistantMsg);
+        })
+        .catch(function(err) {
+            if (err.name === 'AbortError') {
+                $scope.$apply(function() {
+                    assistantMsg.streaming = false;
+                    c.data.isStreaming     = false;
+                    c.data.isThinking      = false;
+                });
+                return;
+            }
+            $scope.$apply(function() {
+                c.data.errorMsg    = 'Stream error: ' + err.message;
+                c.data.isStreaming = false;
+                c.data.isThinking  = false;
+                assistantMsg.streaming = false;
+            });
+        });
+    }
+
+    function _readStream(reader, targetMsg) {
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        let lineBuffer = '';
+
+        function pump() {
+            reader.read().then(function(result) {
+                if (result.done) {
+                    // Flush any remaining buffer content
+                    if (lineBuffer.trim()) {
+                        const token = _parseLine(lineBuffer.trim());
+                        if (token) targetMsg.content += token;
+                    }
+                    _finalizeMessage(targetMsg);
+                    return;
+                }
+
+                const chunk = decoder.decode(result.value, { stream: true });
+                lineBuffer += chunk;
+
+                const lines = lineBuffer.split('\n');
+                lineBuffer = lines.pop();   // hold the (possibly incomplete) last fragment
+
+                let updated = false;
+                lines.forEach(function(line) {
+                    const token = _parseLine(line);
+                    if (token !== null) {
+                        targetMsg.content += token;
+                        updated = true;
+                    }
+                });
+
+                if (updated) {
+                    targetMsg.html = $sce.trustAsHtml(_renderMarkdown(targetMsg.content));
+                    _scrollToBottom();
+                    $scope.$apply();
+                }
+
+                pump();
+            });
+        }
+
+        pump();
+    }
+
+    // Handles both OpenAI SSE and Ollama NDJSON in one function.
+    // Swap endpoints via sys_property without changing any code.
+    function _parseLine(line) {
+        line = line.trim();
+        if (!line) return null;
+
+        // ── OpenAI SSE: "data: {...}" or "data: [DONE]" ──────────────────────
+        if (line.indexOf('data: ') === 0) {
+            const payload = line.slice(6);
+            if (payload === '[DONE]') return null;
+            try {
+                const parsed = JSON.parse(payload);
+                const delta  = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+                return (delta && delta.content) || null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        // ── Ollama NDJSON: "{...}" on a single line ───────────────────────────
+        if (line.charAt(0) === '{') {
+            try {
+                const parsed = JSON.parse(line);
+                if (parsed.done) return null;
+                return (parsed.message && parsed.message.content) || parsed.response || null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    function _finalizeMessage(msg) {
+        msg.streaming = false;
+        msg.html      = $sce.trustAsHtml(_renderMarkdown(msg.content));
+        // Append only {role, content} to history — never html, safeContent, or streaming
+        _conversationHistory.push({ role: 'assistant', content: msg.content });
+        $scope.$apply(function() {
+            c.data.isStreaming = false;
+            c.data.isThinking  = false;
+        });
+        _scrollToBottom();
+    }
+
+    function _scrollToBottom() {
+        $timeout(function() {
+            const el = document.getElementById('llm-scroll-area');
+            if (el) el.scrollTop = el.scrollHeight;
+        }, 0);
+    }
+
+    function _resetTextareaHeight() {
+        $timeout(function() {
+            const el = document.getElementById('llm-textarea');
+            if (el) el.style.height = 'auto';
+        }, 0);
+    }
+
+    // Minimal safe markdown renderer.
+    // Order is critical: code blocks → inline code → bold → italic → lists → line breaks.
+    function _renderMarkdown(text) {
+        let html = _escapeHtml(text);
+
+        // Code blocks — must come before line-break conversion
+        html = html.replace(/```(?:\w+)?\n?([\s\S]*?)```/g, function(_, code) {
+            return '<pre class="llm-code"><code>' + code.replace(/^\n|\n$/g, '') + '</code></pre>';
+        });
+
+        // Inline code
+        html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+        // Bold
+        html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+
+        // Italic (single asterisk, not adjacent to another)
+        html = html.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>');
+
+        // Unordered lists
+        html = html.replace(/^[*\-] (.+)$/gm, '<li>$1</li>');
+        // Wrap consecutive <li> elements in <ul>
+        html = html.replace(/(<li>.*?<\/li>\n?)+/g, function(block) {
+            return '<ul>' + block + '</ul>';
+        });
+
+        // Line breaks — after code blocks so <pre> newlines are preserved
+        html = html.replace(/\n/g, '<br>');
+
+        return html;
+    }
+
+    function _escapeHtml(text) {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    // Auto-resize textarea (up to 160px) — set up once after DOM is ready
+    $timeout(function() {
+        const textarea = document.getElementById('llm-textarea');
+        if (!textarea) return;
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+        });
+    }, 0);
+};
+]]></client_script>
+    <controller_as/>
+    <css><![CDATA[@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Container ─────────────────────────────────────── */
+.llm-container {
+  background: #0f0f13;
+  border-radius: 16px;
+  height: 620px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'SF Pro Text', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #e2e2e8;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.06);
+}
+
+/* ── Header ─────────────────────────────────────────── */
+.llm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.llm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.llm-title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #f0f0f6;
+}
+
+/* Pulsing green status dot */
+.llm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  animation: llm-pulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes llm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+}
+
+.llm-clear-btn {
+  background: none;
+  border: none;
+  color: #6b6b7e;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+
+.llm-clear-btn:hover {
+  color: #e2e2e8;
+  background: rgba(255,255,255,0.07);
+}
+
+/* ── Error banner ────────────────────────────────────── */
+.llm-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: rgba(239, 68, 68, 0.15);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  flex-shrink: 0;
+}
+
+.llm-error-text {
+  font-size: 13px;
+  color: #fca5a5;
+}
+
+.llm-error-dismiss {
+  background: none;
+  border: none;
+  color: #fca5a5;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  line-height: 1;
+  opacity: 0.8;
+  transition: opacity 0.15s;
+}
+
+.llm-error-dismiss:hover { opacity: 1; }
+
+/* ── Message area ────────────────────────────────────── */
+.llm-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+/* Thin custom scrollbar */
+.llm-messages::-webkit-scrollbar { width: 4px; }
+.llm-messages::-webkit-scrollbar-track { background: transparent; }
+.llm-messages::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+}
+.llm-messages::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.22); }
+
+/* ── Empty state ─────────────────────────────────────── */
+.llm-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding-bottom: 40px;
+}
+
+.llm-empty-icon {
+  font-size: 36px;
+  color: #6366f1;
+  animation: llm-rotate 8s linear infinite;
+}
+
+@keyframes llm-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.llm-empty-text {
+  font-size: 15px;
+  color: #8888a0;
+  text-align: center;
+  margin: 0;
+}
+
+/* ── Message rows ────────────────────────────────────── */
+.llm-message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  animation: llm-slide-in 0.25s ease-out;
+}
+
+@keyframes llm-slide-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.llm-row-user {
+  flex-direction: row-reverse;
+}
+
+.llm-row-assistant {
+  flex-direction: row;
+}
+
+/* ── Avatars ─────────────────────────────────────────── */
+.llm-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.llm-avatar-user {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 13px;
+}
+
+.llm-avatar-assistant {
+  background: #1e1e2e;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #6366f1;
+  font-size: 14px;
+}
+
+/* ── Bubbles ─────────────────────────────────────────── */
+.llm-bubble {
+  max-width: 75%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.llm-bubble-user {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.llm-bubble-assistant {
+  background: #1e1e2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d4d4e0;
+  border-bottom-left-radius: 4px;
+}
+
+/* ── Thinking dots ───────────────────────────────────── */
+.llm-thinking {
+  display: flex;
+  gap: 5px;
+  padding: 2px 0;
+}
+
+.llm-dot {
+  width: 6px;
+  height: 6px;
+  background: #6366f1;
+  border-radius: 50%;
+  animation: llm-bounce 1.2s ease-in-out infinite;
+}
+
+.llm-dot:nth-child(2) { animation-delay: 0.2s; }
+.llm-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes llm-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%            { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Blinking cursor ─────────────────────────────────── */
+.llm-cursor {
+  display: inline-block;
+  margin-left: 1px;
+  animation: llm-blink 1s step-start infinite;
+  opacity: 1;
+  color: #6366f1;
+}
+
+@keyframes llm-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Inline markdown ─────────────────────────────────── */
+.llm-bubble strong { font-weight: 600; color: #f0f0f6; }
+.llm-bubble em     { font-style: italic; color: #c4b5fd; }
+
+.llm-bubble ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.llm-bubble li {
+  margin: 2px 0;
+}
+
+.llm-bubble code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12.5px;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.llm-bubble pre {
+  background: #0d0d14;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.llm-bubble pre code {
+  background: none;
+  padding: 0;
+  color: #d4d4e0;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* ── Input area ──────────────────────────────────────── */
+.llm-input-area {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  flex-shrink: 0;
+}
+
+.llm-input-area:focus-within {
+  border-top-color: rgba(99, 102, 241, 0.5);
+}
+
+.llm-textarea {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: #e2e2e8;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 9px 13px;
+  resize: none;
+  outline: none;
+  min-height: 38px;
+  max-height: 160px;
+  overflow-y: auto;
+  transition: border-color 0.15s;
+}
+
+.llm-textarea::placeholder { color: #55556a; }
+
+.llm-textarea:focus {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.llm-textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Send button — 34px square */
+.llm-send-btn,
+.llm-stop-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s, background 0.15s;
+}
+
+.llm-send-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+
+.llm-send-btn:hover { transform: scale(1.08); }
+.llm-send-btn:active { transform: scale(0.96); }
+
+.llm-stop-btn {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.llm-stop-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: scale(1.05);
+}
+
+/* ── Hint text ───────────────────────────────────────── */
+.llm-hint {
+  text-align: center;
+  font-size: 11px;
+  color: #3a3a50;
+  padding: 4px 0 10px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}]]></css>
+    <data_table>sp_instance</data_table>
+    <demo_data/>
+    <description/>
+    <docs/>
+    <field_list/>
+    <has_preview>false</has_preview>
+    <id>llm-assistant</id>
+    <internal>false</internal>
+    <link><![CDATA[function link(scope, element, attrs, controller) {
+}]]></link>
+    <name>LLM AI Assistant</name>
+    <option_schema/>
+    <public>false</public>
+    <roles/>
+    <script><![CDATA[(function() {
+    data.userName = gs.getUser().getFirstName() || 'there';
+})();
+]]></script>
+    <servicenow>false</servicenow>
+    <template><![CDATA[<div class="llm-container">
+
+  <!-- Header -->
+  <div class="llm-header">
+    <div class="llm-header-left">
+      <span class="llm-status-dot"></span>
+      <span class="llm-title">AI Assistant</span>
+    </div>
+    <button class="llm-clear-btn" ng-click="c.clearChat()" title="Clear chat">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"></path>
+        <path d="M10 11v6M14 11v6"></path>
+        <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Error banner -->
+  <div class="llm-error-banner" ng-if="data.errorMsg">
+    <span class="llm-error-text">{{data.errorMsg}}</span>
+    <button class="llm-error-dismiss" ng-click="data.errorMsg = null">&#x2715;</button>
+  </div>
+
+  <!-- Message area -->
+  <div class="llm-messages" id="llm-scroll-area">
+
+    <!-- Empty state -->
+    <div class="llm-empty" ng-if="data.messages.length === 0">
+      <div class="llm-empty-icon">✦</div>
+      <p class="llm-empty-text">Hello, {{data.userName}}! How can I help you today?</p>
+    </div>
+
+    <!-- Messages -->
+    <div class="llm-message-row"
+         ng-repeat="msg in data.messages"
+         ng-class="msg.role === 'user' ? 'llm-row-user' : 'llm-row-assistant'">
+
+      <!-- Assistant avatar -->
+      <div class="llm-avatar llm-avatar-assistant" ng-if="msg.role !== 'user'">✦</div>
+
+      <!-- Bubble -->
+      <div class="llm-bubble"
+           ng-class="msg.role === 'user' ? 'llm-bubble-user' : 'llm-bubble-assistant'">
+
+        <!-- Three-dot thinking indicator — shown while waiting for first chunk -->
+        <div class="llm-thinking" ng-if="data.isThinking && msg.streaming && !msg.content">
+          <span class="llm-dot"></span>
+          <span class="llm-dot"></span>
+          <span class="llm-dot"></span>
+        </div>
+
+        <!-- Markdown content -->
+        <span ng-bind-html="msg.html" ng-if="msg.content"></span>
+
+        <!-- Blinking cursor while streaming -->
+        <span class="llm-cursor" ng-if="msg.streaming && msg.content">&#x2587;</span>
+      </div>
+
+      <!-- User avatar -->
+      <div class="llm-avatar llm-avatar-user" ng-if="msg.role === 'user'">
+        {{data.userName.charAt(0).toUpperCase()}}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Input area -->
+  <div class="llm-input-area">
+    <textarea
+      id="llm-textarea"
+      class="llm-textarea"
+      ng-model="data.userInput"
+      ng-keydown="c.onKeydown($event)"
+      placeholder="Ask me anything…"
+      rows="1"
+      ng-disabled="data.isStreaming"></textarea>
+
+    <!-- Send button -->
+    <button class="llm-send-btn"
+            ng-if="!data.isStreaming"
+            ng-click="c.sendMessage()"
+            title="Send message">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="22" y1="2" x2="11" y2="13"></line>
+        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+      </svg>
+    </button>
+
+    <!-- Stop button -->
+    <button class="llm-stop-btn"
+            ng-if="data.isStreaming"
+            ng-click="c.stopStream()"
+            title="Stop generation">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+      </svg>
+    </button>
+  </div>
+
+  <div class="llm-hint">Enter to send &middot; Shift+Enter for new line</div>
+
+</div>
+]]></template>
+  </sp_widget>
+</record_update>

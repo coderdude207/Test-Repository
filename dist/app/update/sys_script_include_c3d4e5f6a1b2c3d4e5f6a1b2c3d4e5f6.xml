@@ -1,0 +1,88 @@
+<?xml version="1.0"?>
+<record_update table="sys_script_include">
+  <sys_script_include action="INSERT_OR_UPDATE">
+    <sys_id>c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_script_include_c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6</sys_update_name>
+    <access>package_private</access>
+    <active>true</active>
+    <api_name>x_643482_my_cust_0.GitHubWebhookValidator</api_name>
+    <caller_access/>
+    <client_callable>false</client_callable>
+    <description>Validates GitHub webhook signatures and normalises push event payloads</description>
+    <mobile_callable>false</mobile_callable>
+    <name>GitHubWebhookValidator</name>
+    <sandbox_callable>false</sandbox_callable>
+    <script><![CDATA[var GitHubWebhookValidator = Class.create();
+GitHubWebhookValidator.prototype = {
+    initialize: function() {},
+
+    /**
+     * Validates a GitHub HMAC-SHA256 webhook signature.
+     * GitHub sends the header as 'sha256=<hex>' — this method strips the prefix
+     * before comparing against the computed HMAC.
+     *
+     * @param {string} requestBody      - Raw request body string (request.body.dataString)
+     * @param {string} signatureHeader  - Value of X-Hub-Signature-256 header
+     * @param {string} secret           - HMAC secret (from github.webhook.secret sys_property)
+     * @returns {boolean} true if the signature is valid
+     */
+    validateSignature: function(requestBody, signatureHeader, secret) {
+        if (!signatureHeader) {
+            gs.warn('GitHubWebhookValidator: missing X-Hub-Signature-256 header');
+            return false;
+        }
+        var provided = signatureHeader.indexOf('sha256=') === 0
+            ? signatureHeader.substring(7)
+            : signatureHeader;
+        if (!provided) {
+            gs.warn('GitHubWebhookValidator: empty HMAC after prefix strip');
+            return false;
+        }
+        var digest = new GlideDigest();
+        var computed = digest.hmacSha256(secret, requestBody);
+        return computed === provided;
+    },
+
+    /**
+     * Extracts and normalises fields from a GitHub push event body.
+     *
+     * @param {Object} bodyData - Parsed push event JSON (request.body.data)
+     * @returns {{before: string, after: string, branch: string, repoFullName: string, pusher: string, messages: string[]}}
+     */
+    extractPushMeta: function(bodyData) {
+        var ref = bodyData.ref || '';
+        var branch = ref.indexOf('refs/heads/') === 0 ? ref.substring(11) : ref;
+        var messages = [];
+        var commits = bodyData.commits || [];
+        for (var i = 0; i < commits.length; i++) {
+            if (commits[i].message) {
+                messages.push(commits[i].message);
+            }
+        }
+        return {
+            before:       bodyData.before || '',
+            after:        bodyData.after  || '',
+            branch:       branch,
+            repoFullName: (bodyData.repository || {}).full_name || '',
+            pusher:       (bodyData.pusher || {}).name || '',
+            messages:     messages
+        };
+    },
+
+    /**
+     * Returns true if the before SHA is all zeros, indicating a new branch push.
+     * New branch pushes have no meaningful diff to process.
+     *
+     * @param {string} beforeSha - The 'before' SHA from the push payload
+     * @returns {boolean}
+     */
+    isNewBranch: function(beforeSha) {
+        return beforeSha === '0000000000000000000000000000000000000000';
+    },
+
+    type: 'GitHubWebhookValidator'
+};
+]]></script>
+  </sys_script_include>
+</record_update>

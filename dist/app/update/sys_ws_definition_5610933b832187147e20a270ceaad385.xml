@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<record_update table="sys_ws_definition">
+  <sys_ws_definition action="INSERT_OR_UPDATE">
+    <sys_id>5610933b832187147e20a270ceaad385</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_ws_definition_5610933b832187147e20a270ceaad385</sys_update_name>
+    <active>true</active>
+    <base_uri>/api/x_643482_my_cust_0/github_integration</base_uri>
+    <consumes>application/json,application/xml,text/xml</consumes>
+    <consumes_customized>false</consumes_customized>
+    <default_version>No active default version</default_version>
+    <doc_link/>
+    <enforce_acl>cf9d01d3e73003009d6247e603f6a990</enforce_acl>
+    <is_versioned>false</is_versioned>
+    <name>Github Integration</name>
+    <namespace>x_643482_my_cust_0</namespace>
+    <produces>application/json,application/xml,text/xml</produces>
+    <produces_customized>false</produces_customized>
+    <service_id>github_integration</service_id>
+    <short_description/>
+    <sys_policy/>
+  </sys_ws_definition>
+</record_update>

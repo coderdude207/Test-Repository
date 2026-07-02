@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<record_update table="sys_user_role">
+  <sys_user_role action="INSERT_OR_UPDATE">
+    <sys_id>6df89c0f830d43107e20a270ceaad30b</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_user_role_6df89c0f830d43107e20a270ceaad30b</sys_update_name>
+    <assignable_by/>
+    <can_delegate>true</can_delegate>
+    <description>Default admin role</description>
+    <elevated_privilege>false</elevated_privilege>
+    <grantable>true</grantable>
+    <name>x_643482_my_cust_0.admin</name>
+    <scoped_admin>false</scoped_admin>
+    <suffix>admin</suffix>
+  </sys_user_role>
+</record_update>

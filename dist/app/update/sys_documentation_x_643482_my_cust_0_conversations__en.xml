@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<record_update table="sys_documentation">
+  <sys_documentation action="INSERT_OR_UPDATE">
+    <sys_id>ec5b9d3783010b107e20a270ceaad36b</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_documentation_x_643482_my_cust_0_conversations__en</sys_update_name>
+    <element/>
+    <label>Conversations</label>
+    <language>en</language>
+    <name>x_643482_my_cust_0_conversations</name>
+    <plural>Conversations</plural>
+  </sys_documentation>
+</record_update>

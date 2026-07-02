@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<record_update table="sys_app_application">
+  <sys_app_application action="INSERT_OR_UPDATE">
+    <sys_id>e9df9d7f83010b107e20a270ceaad347</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_app_application_e9df9d7f83010b107e20a270ceaad347</sys_update_name>
+    <active>true</active>
+    <category>e0355b31ef303000a61d5a3615c0fb78</category>
+    <description/>
+    <device_type>browser</device_type>
+    <hint/>
+    <name>Prompt Library</name>
+    <order>100</order>
+    <roles>x_643482_my_cust_0.conversations_admin</roles>
+    <title>Prompt Library</title>
+  </sys_app_application>
+</record_update>

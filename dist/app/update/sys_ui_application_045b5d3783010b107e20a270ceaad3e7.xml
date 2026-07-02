@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<record_update table="sys_ui_application">
+  <sys_ui_application action="INSERT_OR_UPDATE">
+    <sys_id>045b5d3783010b107e20a270ceaad3e7</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_ui_application_045b5d3783010b107e20a270ceaad3e7</sys_update_name>
+    <active>true</active>
+    <name>Converations</name>
+    <roles>x_643482_my_cust_0.conversations_admin</roles>
+    <sys_domain>global</sys_domain>
+    <sys_domain_path>/</sys_domain_path>
+  </sys_ui_application>
+</record_update>

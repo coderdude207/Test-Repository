@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="3aba1df383010b107e20a270ceaad345" label="Conversations" max_length="40" name="x_643482_my_cust_0_conversations" type="collection">
+        <element attributes="ignore_filter_on_new=true" default="javascript:global.getNextObjNumberPadded();" label="Number" max_length="40" name="number" type="string"/>
+        <element label="Conversation Summary" max_length="5000" name="conversation_summary" type="string"/>
+        <element label="Conversation Title" max_length="1000" name="conversation_title" type="string"/>
+        <element label="Initiated By User" max_length="32" name="initiated_by_user" reference="sys_user" type="reference"/>
+        <element default="javascript:current.getTableName();" label="Class" max_length="80" name="sys_class_name" type="sys_class_name"/>
+        <index name="index">
+            <element name="initiated_by_user"/>
+        </index>
+        <index name="index2">
+            <element name="sys_class_name"/>
+        </index>
+    </element>
+</database>

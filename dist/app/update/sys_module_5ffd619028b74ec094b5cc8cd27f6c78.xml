@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<record_update table="sys_module">
+  <sys_module action="INSERT_OR_UPDATE">
+    <sys_id>5ffd619028b74ec094b5cc8cd27f6c78</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_module_5ffd619028b74ec094b5cc8cd27f6c78</sys_update_name>
+    <content><![CDATA[{
+  "name": "my-app",
+  "version": "1.0.0",
+  "description": "",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "now-sdk build",
+    "deploy": "now-sdk install",
+    "transform": "now-sdk transform",
+    "types": "now-sdk dependencies"
+  },
+  "devDependencies": {
+    "@servicenow/eslint-plugin-sdk-app-plugin": "3.0.3",
+    "@servicenow/glide": "26.0.1",
+    "@servicenow/sdk": "^4.7.1",
+    "eslint": "8.50.0"
+  }
+}]]></content>
+    <external_source>false</external_source>
+    <path>x_643482_my_cust_0/my-app/1.0.0/package.json</path>
+    <sys_name>x_643482_my_cust_0/my-app/1.0.0/package.json</sys_name>
+  </sys_module>
+</record_update>

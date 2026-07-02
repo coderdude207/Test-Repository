@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<record_update table="sys_web_service">
+  <sys_web_service action="INSERT_OR_UPDATE">
+    <sys_id>ab6063558b5d4e6d822fe9208f3aabd6</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_web_service_ab6063558b5d4e6d822fe9208f3aabd6</sys_update_name>
+    <active>true</active>
+    <name>LLM Proxy</name>
+    <scoped_name>x_643482_my_cust_0_LLM Proxy</scoped_name>
+    <short_description>Issues short-lived tokens and returns LLM credentials for browser-side streaming</short_description>
+    <wsdl>https://dev293427.service-now.com/x_643482_my_cust_0_LLM Proxy.do?WSDL</wsdl>
+    <wsdl_compliance>false</wsdl_compliance>
+  </sys_web_service>
+</record_update>

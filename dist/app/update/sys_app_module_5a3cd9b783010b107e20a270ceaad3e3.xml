@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<record_update table="sys_app_module">
+  <sys_app_module action="INSERT_OR_UPDATE">
+    <sys_id>5a3cd9b783010b107e20a270ceaad3e3</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_app_module_5a3cd9b783010b107e20a270ceaad3e3</sys_update_name>
+    <active>true</active>
+    <application>9a3cd9b783010b107e20a270ceaad3de</application>
+    <link_type>LIST</link_type>
+    <mobile_title>Conversations Messages</mobile_title>
+    <mobile_view_name>Mobile</mobile_view_name>
+    <name>x_643482_my_cust_0_conversations_messages</name>
+    <override_menu_roles>false</override_menu_roles>
+    <require_confirmation>true</require_confirmation>
+    <roles>x_643482_my_cust_0.conversations_admin</roles>
+    <sys_domain>global</sys_domain>
+    <sys_domain_path>/</sys_domain_path>
+    <title>Conversations Messages</title>
+    <uncancelable>false</uncancelable>
+  </sys_app_module>
+</record_update>

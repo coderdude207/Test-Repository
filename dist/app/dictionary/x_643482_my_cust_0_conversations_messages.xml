@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?><database>
+    <element db_object_id="22db11b783010b107e20a270ceaad38e" label="Conversations Messages" max_length="40" name="x_643482_my_cust_0_conversations_messages" type="collection">
+        <element label="Conversation" max_length="32" name="conversation" reference="x_643482_my_cust_0_conversations" type="reference"/>
+        <element choice="1" label="Status" max_length="40" name="status" type="choice">
+            <choice/>
+        </element>
+        <element label="Previous Message" max_length="32" name="previous_message" reference="x_643482_my_cust_0_conversations_messages" type="reference"/>
+        <element attributes="ignore_filter_on_new=true" default="javascript:global.getNextObjNumberPadded();" label="Number" max_length="40" name="number" type="string"/>
+        <element label="Message Content" max_length="10000" name="message_content" type="html"/>
+        <element label="Payload" max_length="10000" name="payload" type="string_full_utf8"/>
+        <element default="0" label="Order" max_length="40" name="order" type="integer"/>
+        <element choice="1" label="Initiated By" max_length="40" name="initiated_by" type="choice">
+            <choice/>
+        </element>
+        <index name="index">
+            <element name="conversation"/>
+        </index>
+        <index name="index2">
+            <element name="previous_message"/>
+        </index>
+    </element>
+</database>

@@ -1,0 +1,1498 @@
+<?xml version="1.0"?>
+<record_update table="sp_widget">
+  <sp_widget action="INSERT_OR_UPDATE">
+    <sys_id>e007e24083198b107e20a270ceaad306</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sp_widget_e007e24083198b107e20a270ceaad306</sys_update_name>
+    <category>custom</category>
+    <client_script><![CDATA[api.controller=
+function($scope, $timeout, $sce) {
+
+  var c = $scope.c;
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  c.view             = 'home';   // 'home' | 'thread'
+  c.dark             = false;
+  c.thinking         = false;
+  c.homeInput        = '';
+  c.dockInput        = '';
+  c.messages         = [];       // array of message objects (see buildReply)
+  c.threadTitle      = '';
+  c.activeRecentId   = null;
+  c.activeNav        = 'chats';
+  c.sidebarCollapsed = false;
+  c.mobileSidebarOpen = false;
+
+  /* ---- User data from server ---- */
+  c.userName    = c.data.userName    || '';
+  c.userDept    = c.data.userDept    || '';
+  c.userInitials = c.data.userInitials || '';
+  // First name only for greeting
+  c.firstName   = c.data.firstName   || c.userName;
+
+  /* ---- Recent chats from server (last 5 incidents) ---- */
+  c.recentChats = c.data.recentChats || [];
+
+  /* ---- Icon set — exact SVGs from the original Buddy design (ic object) ---- */
+  var ic = {
+    key:    $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 19 4M16 7l3 3M14 9l2 2"/></svg>'),
+    ticket: $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 0 0-4Z"/><path d="M14 6v12"/></svg>'),
+    laptop: $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20"/></svg>'),
+    people: $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 20a6 6 0 0 0-3-5.2"/></svg>'),
+    list:   $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>')
+  };
+
+  /* ---- Quick-action chips — exact set from original design with ic SVGs ---- */
+  c.chips = [
+    { icon: ic.key,    label: 'Reset my password',  prompt: 'How do I reset my network password?'              },
+    { icon: ic.ticket, label: 'Raise a ticket',      prompt: 'I need to raise an IT support ticket'            },
+    { icon: ic.list,   label: 'My requests',         prompt: 'Show me the status of my open requests'         },
+    { icon: ic.people, label: 'HR questions',        prompt: 'How many vacation days do I have left this year?' },
+    { icon: ic.laptop, label: 'Request equipment',   prompt: 'I need to request equipment from the catalog'    }
+  ];
+
+  /* ---- Restore persisted theme ---- */
+  try { if (localStorage.getItem('bdy_dark') === '1') { c.dark = true; } } catch(e) {}
+
+  /* ============================================================
+     THEME
+     ============================================================ */
+  c.toggleTheme = function() {
+    c.dark = !c.dark;
+    try { localStorage.setItem('bdy_dark', c.dark ? '1' : '0'); } catch(e) {}
+  };
+
+  /* ============================================================
+     SIDEBAR
+     Single toggle works for both desktop (collapse/expand) and
+     mobile (drawer open/close).  CSS handles the difference via
+     media query — on mobile the sidebar is position:fixed and
+     uses transform; on desktop it uses width transition.
+     ============================================================ */
+  c.toggleSidebar = function() {
+    if (window.innerWidth <= 680) {
+      c.mobileSidebarOpen = !c.mobileSidebarOpen;
+    } else {
+      c.sidebarCollapsed = !c.sidebarCollapsed;
+    }
+  };
+  c.closeMobileSidebar = function() {
+    c.mobileSidebarOpen = false;
+  };
+
+  /* ============================================================
+     NAVIGATION
+     ============================================================ */
+  c.showHome = function() {
+    c.view           = 'home';
+    c.messages       = [];
+    c.threadTitle    = '';
+    c.activeRecentId = null;
+    c.activeNav      = 'chats';
+    c.closeMobileSidebar();
+    $timeout(function() {
+      var el = document.getElementById('bdy-home-field');
+      if (el) { el.focus(); }
+    }, 80);
+  };
+
+  c.newChat = function() {
+    c.showHome();
+  };
+
+  c.navigate = function(dest) {
+    c.activeNav = dest;
+    c.closeMobileSidebar();
+    // Start a conversation scoped to the destination
+    var prompts = {
+      requests: 'Show me the status of my open requests',
+      kb:       'Show me useful IT knowledge articles'
+    };
+    if (prompts[dest]) { c.startConversation(prompts[dest]); }
+  };
+
+  /* ============================================================
+     RECENT CHATS
+     Each chat object has: { id, title, number, state }
+     Clicking one opens a fresh thread pre-seeded with the
+     incident short_description as the user prompt, then responds.
+     ============================================================ */
+  c.loadRecentChat = function(chat) {
+    if (c.thinking) { return; }
+    c.threadTitle    = chat.title;
+    c.messages       = [];
+    c.view           = 'thread';
+    c.activeRecentId = chat.id;
+    c.activeNav      = 'chats';
+    c.closeMobileSidebar();
+
+    // Show the original incident title as a user message, then respond
+    c.messages.push({ role: 'user', text: chat.title });
+    c.scrollThread();
+    c.respond(chat.title);
+  };
+
+  /* ============================================================
+     CONVERSATION ENGINE
+     ============================================================ */
+  c.startConversation = function(text) {
+    if (c.thinking) { return; }
+    c.threadTitle    = text.length > 48 ? text.slice(0,48) + '…' : text;
+    c.messages       = [];
+    c.view           = 'thread';
+    c.activeRecentId = null;
+    c.messages.push({ role: 'user', text: text });
+    c.scrollThread();
+    c.respond(text);
+  };
+
+  c.sendInThread = function(text) {
+    if (c.thinking || !text.trim()) { return; }
+    c.messages.push({ role: 'user', text: text });
+    c.scrollThread();
+    c.respond(text);
+  };
+
+  c.respond = function(text) {
+    c.thinking = true;
+    c.scrollThread();
+
+    $timeout(function() {
+      var reply = buildReply(text);
+      c.messages.push(reply);
+      c.thinking = false;
+      c.scrollThread();
+    }, 1300);
+
+    /* --- Replace the $timeout above with a live server call: ---
+    c.server.get({ action: 'chat', text: text }).then(function(r) {
+      c.messages.push(r.data.reply);
+      c.thinking = false;
+      c.scrollThread();
+    });
+    ------------------------------------------------------------ */
+  };
+
+  /* ============================================================
+     SCROLL
+     ============================================================ */
+  c.scrollThread = function() {
+    $timeout(function() {
+      var el = document.getElementById('bdy-thread');
+      if (el) { el.scrollTop = el.scrollHeight; }
+    }, 40);
+  };
+
+  /* ============================================================
+     INPUT HANDLERS
+     ============================================================ */
+  c.homeKeyDown = function($event) {
+    if ($event.key === 'Enter' && !$event.shiftKey) {
+      $event.preventDefault();
+      c.homeSubmit();
+    }
+  };
+  c.dockKeyDown = function($event) {
+    if ($event.key === 'Enter' && !$event.shiftKey) {
+      $event.preventDefault();
+      c.dockSubmit();
+    }
+  };
+  c.homeSubmit = function() {
+    var v = (c.homeInput || '').trim();
+    if (!v) { return; }
+    c.homeInput = '';
+    c.startConversation(v);
+  };
+  c.dockSubmit = function() {
+    var v = (c.dockInput || '').trim();
+    if (!v || c.thinking) { return; }
+    c.dockInput = '';
+    c.sendInThread(v);
+  };
+
+  /* ============================================================
+     INTENT MATCHING
+     Returns a plain data object — NO HTML strings.
+     The template (ng-if on msg.type) does all rendering.
+
+     Message shape:
+       { role:'bot', type:'text',  html: $sce.trustAsHtml('...') }
+       { role:'bot', type:'steps', intro:'...', steps:[], outro:'...' }
+       { role:'bot', type:'list',  intro:'...', items:[], outro:'...' }
+       { role:'bot', type:'cards', intro:'...', cards:[], outro:'...' }
+     ============================================================ */
+  function buildReply(text) {
+    var t = text.toLowerCase();
+
+    /* Password reset */
+    if (has(t, ['password', 'reset password', 'forgot password', 'vpn password', 'locked out'])) {
+      return {
+        role: 'bot', type: 'steps',
+        intro: 'Happy to help you reset your network password. Here\'s the quickest way:',
+        steps: [
+          'Go to the <strong>Self-Service Portal</strong> and choose <code>Reset Password</code>.',
+          'Verify your identity with the code sent to your registered mobile.',
+          'Enter a new password (12+ characters, one number, one symbol).',
+          'Sign out and back in on all your devices.'
+        ],
+        outro: 'Want me to open the reset flow for you, or raise a ticket if you\'re locked out?'
+      };
+    }
+
+    /* Wi-Fi / network connectivity */
+    if (has(t, ['wi-fi', 'wifi', 'wireless', 'cannot connect', 'not connecting', 'network issue'])) {
+      return {
+        role: 'bot', type: 'cards',
+        intro: 'Got it — I\'ve drafted an incident for your connectivity issue:',
+        cards: [
+          { icon: ic.laptop, title: 'Laptop won\'t connect to Wi-Fi', sub: 'Category: Hardware · Priority: Medium', statusKey: 'open', statusText: 'Draft' }
+        ],
+        outro: 'This will be routed to the End-User Computing team. Typical first response is under 2 hours. Shall I submit it?'
+      };
+    }
+
+    /* Check open requests / incidents */
+    if (has(t, ['status', 'open request', 'my request', 'my ticket', 'my incident', 'check request', 'show me'])) {
+      // Populate cards from server data if available, otherwise show empty state
+      var incCards = [];
+      if (c.data.incidents && c.data.incidents.length > 0) {
+        incCards = c.data.incidents.map(function(i) {
+          return {
+            icon: ic.ticket,
+            title: i.number + ' · ' + i.short_desc,
+            sub: 'Priority: ' + i.priority + ' · Updated: ' + i.updated,
+            statusKey: i.state === 'In Progress' ? 'prog' : (i.state === 'Resolved' ? 'done' : 'open'),
+            statusText: i.state
+          };
+        });
+      }
+      if (incCards.length === 0) {
+        return {
+          role: 'bot', type: 'text',
+          html: $sce.trustAsHtml('<p>You have no open incidents right now. Would you like to <strong>raise a new ticket</strong>?</p>')
+        };
+      }
+      return {
+        role: 'bot', type: 'cards',
+        intro: 'Here are your open items:',
+        cards: incCards,
+        outro: 'Want me to nudge an approver or open any of these in detail?'
+      };
+    }
+
+    /* Vacation / leave balance */
+    if (has(t, ['vacation', 'leave', 'holiday', 'pto', 'time off', 'days remaining', 'days left', 'annual leave'])) {
+      var vac = c.data.balance || {};
+      var vacDays  = vac.vacation  !== undefined ? vac.vacation  : '—';
+      var floatDays = vac.floating !== undefined ? vac.floating  : '—';
+      return {
+        role: 'bot', type: 'text',
+        html: $sce.trustAsHtml(
+          '<p>You currently have <strong>' + vacDays + ' vacation day' + (vacDays === 1 ? '' : 's') + '</strong> remaining' +
+          (floatDays !== '—' ? ', plus <strong>' + floatDays + ' floating holiday' + (floatDays === 1 ? '' : 's') + '</strong>' : '') + '.</p>' +
+          '<p>Would you like me to <strong>start a new time-off request</strong> or show the team calendar?</p>'
+        )
+      };
+    }
+
+    /* Equipment / catalog order */
+    if (has(t, ['charger', 'equipment', 'order', 'catalog', 'monitor', 'keyboard', 'mouse', 'headset', 'docking', 'webcam'])) {
+      return {
+        role: 'bot', type: 'cards',
+        intro: 'Sure — I can help you order that. Standard catalog items need no approval:',
+        cards: [
+          { icon: ic.laptop, title: 'Service Catalog', sub: 'Browse & order hardware, software, and accessories', statusKey: 'open', statusText: 'Ready' }
+        ],
+        outro: 'Shall I open the catalog for you, or tell me what you need and I\'ll find it?'
+      };
+    }
+
+    /* Knowledge Base search */
+    if (has(t, ['knowledge', 'kb', 'article', 'how to', 'guide', 'tutorial', 'documentation', 'help article'])) {
+      var kbIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:5px"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6"/></svg>';
+      var kbItems = [];
+      if (c.data.articles && c.data.articles.length > 0) {
+        kbItems = c.data.articles.map(function(a) {
+          return kbIcon + '<strong>' + a.title + '</strong> — ' + a.number;
+        });
+      } else {
+        kbItems = [
+          kbIcon + 'Use the search bar above to find KB articles, or describe your issue and I\'ll search for you.'
+        ];
+      }
+      return {
+        role: 'bot', type: 'list',
+        intro: 'Here are some knowledge articles that may help:',
+        items: kbItems.map(function(i) { return $sce.trustAsHtml(i); }),
+        outro: 'Want me to search for something more specific?'
+      };
+    }
+
+    /* New ticket / raise incident */
+    if (has(t, ['ticket', 'incident', 'raise', 'log', 'create', 'submit', 'report', 'raise a'])) {
+      return {
+        role: 'bot', type: 'steps',
+        intro: 'I can raise a ticket for you. To get started, could you tell me:',
+        steps: [
+          'What\'s the issue or request in one sentence?',
+          'How urgent is it — Low, Medium, or High?',
+          'Which device or system is affected (if any)?'
+        ],
+        outro: 'Or just describe the problem and I\'ll fill in the details automatically.'
+      };
+    }
+
+    /* Fallback */
+    return {
+      role: 'bot', type: 'list',
+      intro: 'I can help you with:',
+      items: [
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><circle cx="8" cy="15" r="4"/><path d="M10.8 12.2 19 4M16 7l3 3M14 9l2 2"/></svg><strong>Password &amp; account resets</strong>'),
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2 2 2 0 0 0 0 4 2 2 0 0 1 0 4 2 2 0 0 1-2 2H5a2 2 0 0 1-2-2 2 2 0 0 0 0-4 2 2 0 0 0 0-4Z"/><path d="M14 6v12"/></svg><strong>Raising IT support tickets</strong>'),
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg><strong>Checking your open requests</strong>'),
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 20h20"/></svg><strong>Ordering from the service catalog</strong>'),
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5.5a3 3 0 0 1 0 5.6M18 20a6 6 0 0 0-3-5.2"/></svg><strong>HR &amp; vacation questions</strong>'),
+        $sce.trustAsHtml('<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;width:14px;height:14px;margin-right:6px"><path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6"/></svg><strong>Searching the Knowledge Base</strong>')
+      ],
+      outro: 'What would you like to do?'
+    };
+  }
+
+  /* ---- keyword helper ---- */
+  function has(text, terms) {
+    return terms.some(function(term) { return text.indexOf(term) > -1; });
+  }
+
+}
+]]></client_script>
+    <controller_as>c</controller_as>
+    <css><![CDATA[/* ================================================================
+   BUDDY WIDGET — CSS (Service Portal)
+   ================================================================ */
+
+/* ---- Tokens ---- */
+.buddy-app {
+  --bdy-green-50:  #ecf7f1;
+  --bdy-green-100: #d2ebdf;
+  --bdy-green-500: #16805a;
+  --bdy-green-600: #0f6b4b;
+  --bdy-green-700: #0c553c;
+
+  /* Light theme */
+  --bdy-bg:            #f6f8f6;
+  --bdy-sidebar-bg:    #eef2ee;
+  --bdy-surface:       #ffffff;
+  --bdy-surface-2:     #f2f5f2;
+  --bdy-border:        #e2e8e3;
+  --bdy-border-strong: #d2dcd5;
+  --bdy-text:          #1b241f;
+  --bdy-text-soft:     #56635b;
+  --bdy-text-muted:    #8a958e;
+  --bdy-accent:        var(--bdy-green-500);
+  --bdy-accent-hover:  var(--bdy-green-600);
+  --bdy-accent-soft:   var(--bdy-green-50);
+  --bdy-accent-soft-2: var(--bdy-green-100);
+  --bdy-on-accent:     #ffffff;
+  --bdy-bubble-user:   var(--bdy-green-500);
+  --bdy-bubble-user-text: #ffffff;
+  --bdy-chat-bg:       #ffffff;
+  --bdy-shadow-sm: 0 1px 2px rgba(7,48,31,.06), 0 1px 3px rgba(7,48,31,.04);
+  --bdy-shadow-md: 0 4px 14px rgba(7,48,31,.08), 0 2px 6px rgba(7,48,31,.05);
+  --bdy-radius:    12px;
+  --bdy-radius-xl: 26px;
+}
+
+/* Dark theme */
+.buddy-app.dark {
+  --bdy-bg:            #0c1428;
+  --bdy-sidebar-bg:    #0a1020;
+  --bdy-surface:       #13203b;
+  --bdy-surface-2:     #1b2944;
+  --bdy-border:        #283755;
+  --bdy-border-strong: #344768;
+  --bdy-text:          #e7edf7;
+  --bdy-text-soft:     #a4b2cb;
+  --bdy-text-muted:    #6f7e98;
+  --bdy-accent:        #3bd492;
+  --bdy-accent-hover:  #4ee0a1;
+  --bdy-accent-soft:   rgba(59,212,146,.13);
+  --bdy-accent-soft-2: rgba(59,212,146,.22);
+  --bdy-on-accent:     #04231a;
+  --bdy-bubble-user:   #1f6b4d;
+  --bdy-bubble-user-text: #eafff5;
+  --bdy-chat-bg:       #0c1428;
+}
+
+/* ================================================================
+   APP SHELL
+   ================================================================ */
+.buddy-app {
+  display: flex;
+  height: 100%;
+  min-height: 600px;
+  background: var(--bdy-bg);
+  color: var(--bdy-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* overflow:hidden is essential — it clips the sidebar when it slides away */
+  overflow: hidden;
+  border-radius: var(--bdy-radius);
+  box-shadow: var(--bdy-shadow-md);
+  position: relative;
+}
+
+/* ================================================================
+   SIDEBAR
+   Collapse works by animating width to 0 and hiding overflow.
+   This avoids fighting flex-basis with negative margins.
+   ================================================================ */
+.bdy-sidebar {
+  /* Width is animated, not margin — this is what makes collapse reliable */
+  width: 248px;
+  min-width: 248px;    /* prevents content reflowing while animating */
+  flex-shrink: 0;
+  background: var(--bdy-sidebar-bg);
+  border-right: 1px solid var(--bdy-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;    /* clips content during collapse */
+  transition: width .28s cubic-bezier(.4,0,.2,1),
+              min-width .28s cubic-bezier(.4,0,.2,1),
+              border-right-color .28s;
+  z-index: 20;
+}
+
+/* Collapsed state: width→0 hides it; border becomes invisible */
+.bdy-sidebar.bdy-sidebar--collapsed {
+  width: 0;
+  min-width: 0;
+  border-right-color: transparent;
+}
+
+/* ---- Sidebar top bar ---- */
+.bdy-sb-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 12px 12px;
+  border-bottom: 1px solid var(--bdy-border);
+  flex-shrink: 0;
+  /* min-width stops the top bar from collapsing before the animation ends */
+  min-width: 248px;
+}
+.bdy-brand { display: flex; align-items: center; gap: 10px; }
+.bdy-mark  { width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0; }
+.bdy-name  { font-size: 16px; font-weight: 650; letter-spacing: -.3px; color: var(--bdy-text); white-space: nowrap; }
+
+/* ---- Scrollable area ---- */
+.bdy-sb-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px 8px 8px;
+  min-width: 248px;
+}
+.bdy-sb-scroll::-webkit-scrollbar { width: 4px; }
+.bdy-sb-scroll::-webkit-scrollbar-thumb { background: var(--bdy-border-strong); border-radius: 4px; }
+
+/* ---- Nav items ---- */
+.bdy-nav-list {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bdy-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--bdy-text-soft);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.bdy-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+.bdy-nav-item:hover  { background: var(--bdy-accent-soft);   color: var(--bdy-accent); }
+.bdy-nav-item.active { background: var(--bdy-accent-soft-2); color: var(--bdy-accent); font-weight: 600; }
+
+.bdy-newchat {
+  margin-bottom: 6px;
+  background: var(--bdy-surface);
+  border: 1px solid var(--bdy-border);
+  color: var(--bdy-text);
+}
+.bdy-newchat:hover {
+  background: var(--bdy-accent);
+  color: var(--bdy-on-accent);
+  border-color: var(--bdy-accent);
+}
+
+/* ---- Section label ---- */
+.bdy-sb-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: var(--bdy-text-muted);
+  padding: 12px 10px 4px;
+  white-space: nowrap;
+}
+
+/* ---- Recent items ---- */
+.bdy-recents { display: flex; flex-direction: column; gap: 1px; }
+.bdy-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--bdy-text-soft);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  overflow: hidden;
+  transition: background .15s, color .15s;
+}
+.bdy-recent-item svg  { width: 14px; height: 14px; flex-shrink: 0; opacity: .6; }
+.bdy-recent-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bdy-recent-item:hover  { background: var(--bdy-accent-soft);   color: var(--bdy-text); }
+.bdy-recent-item.active { background: var(--bdy-accent-soft-2); color: var(--bdy-accent); }
+
+/* ---- Profile ---- */
+.bdy-sb-bottom {
+  padding: 10px 8px;
+  border-top: 1px solid var(--bdy-border);
+  flex-shrink: 0;
+  min-width: 248px;
+}
+.bdy-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 10px;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.bdy-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--bdy-accent);
+  color: var(--bdy-on-accent);
+  font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.bdy-pinfo  { min-width: 0; }
+.bdy-pname  { font-size: 13px; font-weight: 600; color: var(--bdy-text); overflow: hidden; text-overflow: ellipsis; }
+.bdy-pplan  { font-size: 11.5px; color: var(--bdy-text-muted); }
+
+/* ================================================================
+   SCRIM  (mobile only)
+   ================================================================ */
+.bdy-scrim {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.38);
+  z-index: 15;
+}
+.bdy-scrim.bdy-scrim--show { display: block; }
+
+/* ================================================================
+   MAIN AREA
+   ================================================================ */
+.bdy-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bdy-bg);
+  overflow: hidden;
+}
+
+/* ---- Topbar ---- */
+.bdy-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bdy-border);
+  background: var(--bdy-bg);
+  flex-shrink: 0;
+  height: 52px;
+}
+.bdy-topbar-left,
+.bdy-topbar-right { display: flex; align-items: center; gap: 8px; }
+
+.bdy-icon-btn {
+  width: 34px; height: 34px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--bdy-text-soft);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.bdy-icon-btn svg { width: 18px; height: 18px; }
+.bdy-icon-btn:hover { background: var(--bdy-accent-soft); color: var(--bdy-accent); }
+
+.bdy-tb-pill {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--bdy-border);
+  background: var(--bdy-surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bdy-text-soft);
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================================================================
+   HOME STAGE
+   ================================================================ */
+.bdy-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  overflow-y: auto;
+}
+.bdy-home {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.bdy-greeting { display: flex; align-items: center; gap: 16px; }
+.bdy-greet-mark { width: 52px; height: 52px; flex-shrink: 0; border-radius: 16px; }
+.bdy-greeting-text {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 700;
+  color: var(--bdy-text);
+  margin: 0;
+  letter-spacing: -.5px;
+}
+
+.bdy-sub-heading {
+  font-size: 15px;
+  color: var(--bdy-text-muted);
+  margin-top: -14px;
+  align-self: flex-start;
+  padding-left: 68px;
+}
+
+/* ================================================================
+   COMPOSER  (shared by home + dock)
+   ================================================================ */
+.bdy-composer {
+  width: 100%;
+  background: var(--bdy-surface);
+  border: 1.5px solid var(--bdy-border-strong);
+  border-radius: var(--bdy-radius-xl);
+  box-shadow: var(--bdy-shadow-sm);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bdy-composer:focus-within {
+  border-color: var(--bdy-accent);
+  box-shadow: 0 0 0 3px var(--bdy-accent-soft);
+}
+
+.bdy-field {
+  display: block;
+  width: 100%;
+  padding: 16px 18px 8px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--bdy-text);
+  line-height: 1.5;
+  min-height: 52px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.bdy-field::placeholder { color: var(--bdy-text-muted); }
+
+.bdy-composer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 10px;
+}
+.bdy-composer-left,
+.bdy-composer-right { display: flex; align-items: center; gap: 6px; }
+
+.bdy-model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bdy-accent-soft);
+  color: var(--bdy-accent);
+  font-size: 12px;
+  font-weight: 600;
+  user-select: none;
+}
+.bdy-effort {
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bdy-accent);
+  color: var(--bdy-on-accent);
+  font-size: 10.5px;
+}
+
+.bdy-send-btn {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--bdy-accent);
+  color: var(--bdy-on-accent);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  flex-shrink: 0;
+}
+.bdy-send-btn:hover:not([disabled]) { background: var(--bdy-accent-hover); transform: scale(1.06); }
+.bdy-send-btn[disabled] { opacity: .4; cursor: default; transform: none; }
+.bdy-send-btn svg { width: 15px; height: 15px; }
+
+/* ================================================================
+   CHIPS
+   ================================================================ */
+.bdy-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+.bdy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--bdy-border-strong);
+  background: var(--bdy-surface);
+  color: var(--bdy-text-soft);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.bdy-chip:hover {
+  background: var(--bdy-accent-soft);
+  border-color: var(--bdy-accent);
+  color: var(--bdy-accent);
+}
+.bdy-chip-icon { font-size: 16px; line-height: 1; }
+
+/* ================================================================
+   THREAD VIEW
+   ================================================================ */
+.bdy-thread-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bdy-chat-bg);
+}
+
+.bdy-thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0 8px;
+}
+.bdy-thread::-webkit-scrollbar { width: 6px; }
+.bdy-thread::-webkit-scrollbar-thumb { background: var(--bdy-border-strong); border-radius: 6px; }
+
+.bdy-thread-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ---- Message rows ---- */
+.bdy-msg-row  { display: flex; gap: 10px; align-items: flex-end; }
+.bdy-user-row { justify-content: flex-end; }
+.bdy-bot-row  { justify-content: flex-start; }
+
+.bdy-bot-avatar {
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.bdy-bot-avatar svg { width: 28px; height: 28px; display: block; }
+
+/* ---- Bubbles ---- */
+.bdy-bubble {
+  max-width: 76%;
+  padding: 12px 16px;
+  border-radius: 18px;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+.bdy-bubble-user {
+  background: var(--bdy-bubble-user);
+  color: var(--bdy-bubble-user-text);
+  border-bottom-right-radius: 4px;
+}
+.bdy-bubble-bot {
+  background: var(--bdy-surface);
+  color: var(--bdy-text);
+  border: 1px solid var(--bdy-border);
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--bdy-shadow-sm);
+}
+.bdy-bubble-text { word-break: break-word; }
+
+/* Shared bot bubble text helpers */
+.bdy-bubble-intro,
+.bdy-bubble-outro { margin: 0 0 8px; }
+.bdy-bubble-outro { margin: 8px 0 0; }
+
+.bdy-bubble-bot strong { font-weight: 650; }
+.bdy-bubble-bot code {
+  background: var(--bdy-surface-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* Steps (ol) and bullet list (ul) */
+.bdy-steps,
+.bdy-bullet-list {
+  margin: 6px 0 4px 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bdy-steps li,
+.bdy-bullet-list li { line-height: 1.55; }
+
+/* ---- Request card ---- */
+.bdy-req-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: var(--bdy-surface-2);
+  border: 1px solid var(--bdy-border);
+  border-radius: 12px;
+}
+.bdy-rc-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: var(--bdy-accent-soft);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.bdy-rc-main  { flex: 1; min-width: 0; }
+.bdy-rc-title { font-weight: 600; font-size: 13.5px; color: var(--bdy-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bdy-rc-sub   { font-size: 12px; color: var(--bdy-text-muted); }
+.bdy-rc-status {
+  font-size: 11.5px; font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.bdy-status-open { background: #fef3c7; color: #92400e; }
+.bdy-status-prog { background: #dbeafe; color: #1e40af; }
+.bdy-status-done { background: var(--bdy-green-50); color: var(--bdy-green-700); }
+
+/* ---- Thinking dots ---- */
+.bdy-thinking-bubble {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 14px 18px;
+}
+.bdy-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--bdy-text-muted);
+  animation: bdyBounce 1.2s infinite ease-in-out;
+}
+.bdy-dot:nth-child(2) { animation-delay: .2s; }
+.bdy-dot:nth-child(3) { animation-delay: .4s; }
+@keyframes bdyBounce {
+  0%, 80%, 100% { transform: scale(.6); opacity: .5; }
+  40%           { transform: scale(1);  opacity: 1;  }
+}
+
+/* ================================================================
+   DOCK  (thread input)
+   ================================================================ */
+.bdy-dock {
+  flex-shrink: 0;
+  padding: 12px 16px 16px;
+  background: var(--bdy-chat-bg);
+  border-top: 1px solid var(--bdy-border);
+}
+.bdy-dock-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  background: var(--bdy-surface);
+  border: 1.5px solid var(--bdy-border-strong);
+  border-radius: var(--bdy-radius-xl);
+  box-shadow: var(--bdy-shadow-sm);
+  transition: border-color .2s, box-shadow .2s;
+}
+.bdy-dock-inner:focus-within {
+  border-color: var(--bdy-accent);
+  box-shadow: 0 0 0 3px var(--bdy-accent-soft);
+}
+.bdy-dock-field { padding: 14px 18px 6px; font-size: 14.5px; min-height: 44px; }
+
+/* ================================================================
+   MOBILE  (≤ 680px)
+   On small screens the sidebar becomes a slide-in drawer (fixed,
+   off-screen by default, slides in via transform when --mobile-open).
+   The collapse toggle is repurposed as the drawer toggle.
+   ================================================================ */
+@media (max-width: 680px) {
+  .bdy-sidebar {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    z-index: 30;
+    /* Reset the desktop width-based animation */
+    width: 248px !important;
+    min-width: 248px !important;
+    /* Use transform for the mobile drawer */
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    border-right-color: var(--bdy-border) !important;
+  }
+  .bdy-sidebar.bdy-sidebar--mobile-open {
+    transform: translateX(0);
+  }
+  /* Desktop collapsed class has no effect on mobile */
+  .bdy-sidebar.bdy-sidebar--collapsed {
+    transform: translateX(-100%);
+    width: 248px !important;
+    min-width: 248px !important;
+  }
+  .bdy-scrim { display: none; }
+  .bdy-scrim.bdy-scrim--show { display: block; }
+
+  .bdy-greeting { flex-direction: column; text-align: center; }
+  .bdy-greet-mark { width: 44px; height: 44px; }
+  .bdy-greeting-text { font-size: 20px; }
+  .bdy-sub-heading { padding-left: 0; align-self: center; }
+  .bdy-bubble { max-width: 90%; }
+}]]></css>
+    <data_table>sp_instance</data_table>
+    <demo_data/>
+    <description/>
+    <docs/>
+    <field_list/>
+    <has_preview>true</has_preview>
+    <id>buddy_ai_assitant</id>
+    <internal>false</internal>
+    <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+    <name>buddy ai assitant</name>
+    <option_schema/>
+    <public>false</public>
+    <roles/>
+    <script><![CDATA[(function() {
+
+  /* =============================================================
+     INITIAL DATA  (runs on every page load)
+     ============================================================= */
+
+  // ---- Current user ----
+  var gr = new GlideRecord('sys_user');
+  gr.get('sys_id', gs.getUserID());
+
+  var firstName = gr.isValidRecord() ? (gr.getValue('first_name') || '') : '';
+  var lastName  = gr.isValidRecord() ? (gr.getValue('last_name')  || '') : '';
+  var fullName  = (firstName + ' ' + lastName).trim() || gs.getUserName();
+var email=gr.getValue('email');
+  data.userName     = fullName;
+  data.firstName    = firstName || fullName;   // used in greeting: "Hey there, [firstName]"
+  data.userInitials = ((firstName ? firstName.charAt(0) : '') + (lastName ? lastName.charAt(0) : '')).toUpperCase() || fullName.charAt(0).toUpperCase();
+  data.userDept     = gr.isValidRecord() ? (gr.getDisplayValue('department') || 'Employee') : 'Employee';
+  data.userEmail    = email;
+
+  // ---- Recent chats (last 5 incidents opened/updated by user) ----
+  data.recentChats = [];
+  var recentINC = new GlideRecord('incident');
+  recentINC.addQuery('caller_id', gs.getUserID());
+  recentINC.orderByDesc('sys_updated_on');
+  recentINC.setLimit(5);
+  recentINC.query();
+  while (recentINC.next()) {
+    data.recentChats.push({
+      id:    recentINC.getUniqueValue(),
+      title: recentINC.getValue('short_description') || 'Incident ' + recentINC.getDisplayValue('number'),
+      number: recentINC.getDisplayValue('number'),
+      state:  recentINC.getDisplayValue('state')
+    });
+  }
+
+  /* =============================================================
+     AJAX ACTIONS  (called from client via c.server.get())
+     ============================================================= */
+
+  if (input && input.action) {
+
+    // ------------------------------------------------------------------
+    // action: 'getIncidents'
+    // Returns open incidents for the current user
+    // ------------------------------------------------------------------
+    if (input.action === 'getIncidents') {
+      data.incidents = [];
+      var inc = new GlideRecord('incident');
+      inc.addQuery('caller_id', gs.getUserID());
+      inc.addQuery('state', 'IN', '1,2,3');       // New, In Progress, On Hold
+      inc.orderByDesc('sys_updated_on');
+      inc.setLimit(10);
+      inc.query();
+      while (inc.next()) {
+        data.incidents.push({
+          number:      inc.getDisplayValue('number'),
+          short_desc:  inc.getValue('short_description'),
+          state:       inc.getDisplayValue('state'),
+          priority:    inc.getDisplayValue('priority'),
+          updated:     inc.getDisplayValue('sys_updated_on'),
+          sys_id:      inc.getUniqueValue()
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // action: 'getRequests'
+    // Returns open requests/catalog items for the current user
+    // ------------------------------------------------------------------
+    else if (input.action === 'getRequests') {
+      data.requests = [];
+      var req = new GlideRecord('sc_request');
+      req.addQuery('requested_for', gs.getUserID());
+      req.addQuery('state', 'IN', '1,2,3');
+      req.orderByDesc('sys_updated_on');
+      req.setLimit(10);
+      req.query();
+      while (req.next()) {
+        data.requests.push({
+          number:     req.getDisplayValue('number'),
+          short_desc: req.getValue('short_description'),
+          state:      req.getDisplayValue('request_state'),
+          updated:    req.getDisplayValue('sys_updated_on'),
+          sys_id:     req.getUniqueValue()
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // action: 'searchKB'
+    // Full-text search of knowledge articles
+    // ------------------------------------------------------------------
+    else if (input.action === 'searchKB') {
+      data.articles = [];
+      var query = input.query || '';
+      var kb = new GlideRecord('kb_knowledge');
+      kb.addQuery('short_description', 'CONTAINS', query);
+      kb.addQuery('workflow_state', 'published');
+      kb.setLimit(5);
+      kb.query();
+      while (kb.next()) {
+        data.articles.push({
+          title:   kb.getValue('short_description'),
+          number:  kb.getDisplayValue('number'),
+          sys_id:  kb.getUniqueValue()
+        });
+      }
+    }
+
+    // ------------------------------------------------------------------
+    // action: 'createIncident'
+    // Creates a new incident on behalf of the user
+    // ------------------------------------------------------------------
+    else if (input.action === 'createIncident') {
+      var newInc = new GlideRecord('incident');
+      newInc.initialize();
+      newInc.setValue('caller_id',         gs.getUserID());
+      newInc.setValue('short_description', input.short_desc || 'Incident from Buddy widget');
+      newInc.setValue('description',       input.description || '');
+      newInc.setValue('priority',          input.priority   || '3');  // 3 = Moderate
+      newInc.setValue('category',          input.category   || 'software');
+      newInc.setValue('contact_type',      'self-service');
+      var sysId = newInc.insert();
+      data.created = {
+        success: !!sysId,
+        sys_id:  sysId,
+        number:  sysId ? newInc.getDisplayValue('number') : null
+      };
+    }
+
+    // ------------------------------------------------------------------
+    // action: 'getVacationBalance'
+    // Fetches leave balance (adjust table/field names for your HR setup)
+    // ------------------------------------------------------------------
+    else if (input.action === 'getVacationBalance') {
+      // Example: reading from hr_leave_request or a custom table
+      // Adjust field names to match your instance's HR module
+      data.balance = {
+        vacation:  14,   // Replace with GlideRecord lookup
+        floating:  3,
+        sick:      5
+      };
+      // Real example (uncomment & adapt):
+      // var hrBalance = new GlideRecord('hr_leave_balance');
+      // hrBalance.addQuery('employee', gs.getUserID());
+      // hrBalance.query();
+      // if (hrBalance.next()) {
+      //   data.balance.vacation = hrBalance.getValue('vacation_remaining');
+      // }
+    }
+
+    // ------------------------------------------------------------------
+    // action: 'getUserProfile'
+    // Returns enriched user profile data
+    // ------------------------------------------------------------------
+    else if (input.action === 'getUserProfile') {
+      var gu = new GlideRecord('sys_user');
+      gu.get('sys_id', gs.getUserID());
+      data.profile = gu.isValidRecord() ? {
+        name:       gu.getDisplayValue('name'),
+        email:      gu.getValue('email'),
+        department: gu.getDisplayValue('department'),
+        manager:    gu.getDisplayValue('manager'),
+        location:   gu.getDisplayValue('location'),
+        phone:      gu.getValue('phone')
+      } : {};
+    }
+  }
+
+})();]]></script>
+    <servicenow>false</servicenow>
+    <template><![CDATA[<!-- ================================================================
+     BUDDY WIDGET — HTML Template
+     ServiceNow Service Portal Widget
+     All icons are the exact SVGs from the original Buddy design.
+     ================================================================ -->
+<div class="buddy-app" ng-class="{'dark': c.dark}">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="bdy-sidebar" ng-class="{'bdy-sidebar--collapsed': c.sidebarCollapsed, 'bdy-sidebar--mobile-open': c.mobileSidebarOpen}">
+
+    <div class="bdy-sb-top">
+      <div class="bdy-brand">
+        <!-- Spark / generate glyph — exact sparkSVG(26) from design -->
+        <svg class="bdy-mark" viewBox="0 0 32 32" width="26" height="26" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+          <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+        </svg>
+        <span class="bdy-name">Buddy</span>
+      </div>
+      <!-- Sidebar / panel toggle icon — exact from design -->
+      <button class="bdy-icon-btn" title="Collapse sidebar" ng-click="c.toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+          <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+          <path d="M9 4v16"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="bdy-sb-scroll">
+      <!-- New chat — plus / compose icon from design -->
+      <button class="bdy-nav-item bdy-newchat" ng-click="c.newChat()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" width="16" height="16">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        New chat
+      </button>
+
+      <nav class="bdy-nav-list">
+        <!-- Chats — speech bubble icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'chats'}" ng-click="c.showHome()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 11.5a8.5 8.5 0 0 1-12.2 7.7L3 21l1.8-5.8A8.5 8.5 0 1 1 21 11.5Z"/>
+          </svg>
+          Chats
+        </button>
+        <!-- My Requests — trash/basket icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'requests'}" ng-click="c.navigate('requests')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h16M4 7l1.2 12.2A2 2 0 0 0 7.2 21h9.6a2 2 0 0 0 2-1.8L20 7M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+          </svg>
+          My Requests
+        </button>
+        <!-- Knowledge Base — document icon from design -->
+        <button class="bdy-nav-item" ng-class="{'active': c.activeNav === 'kb'}" ng-click="c.navigate('kb')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5a2 2 0 0 1 2-2h9l5 5v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/>
+            <path d="M14 3v6h6"/>
+          </svg>
+          Knowledge Base
+        </button>
+      </nav>
+
+      <!-- Recent chats — populated from server (last 5 incidents) -->
+      <!-- Original design renders these as plain text buttons with no icon -->
+      <div ng-show="c.recentChats.length > 0">
+        <div class="bdy-sb-label">Recent</div>
+        <div class="bdy-recents">
+          <button class="bdy-recent-item"
+                  ng-repeat="chat in c.recentChats track by chat.id"
+                  ng-class="{'active': c.activeRecentId === chat.id}"
+                  ng-click="c.loadRecentChat(chat)">
+            {{chat.title}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bdy-sb-bottom">
+      <div class="bdy-profile">
+        <span class="bdy-avatar">{{c.userInitials}}</span>
+        <span class="bdy-pinfo">
+          <div class="bdy-pname">{{c.userName}}</div>
+          <div class="bdy-pplan">{{c.userDept}}</div>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Scrim — closes mobile sidebar when tapped -->
+  <div class="bdy-scrim" ng-class="{'bdy-scrim--show': c.mobileSidebarOpen}" ng-click="c.closeMobileSidebar()"></div>
+
+  <!-- ==================== MAIN ==================== -->
+  <main class="bdy-main">
+
+    <!-- Topbar -->
+    <div class="bdy-topbar">
+      <div class="bdy-topbar-left">
+        <!-- Panel/sidebar toggle — same icon as sidebar collapse button -->
+        <button class="bdy-icon-btn" ng-click="c.toggleSidebar()" title="Toggle sidebar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9">
+            <rect x="3" y="4" width="18" height="16" rx="2.5"/>
+            <path d="M9 4v16"/>
+          </svg>
+        </button>
+        <span class="bdy-tb-pill" ng-show="c.view === 'thread'">{{c.threadTitle}}</span>
+      </div>
+      <div class="bdy-topbar-right">
+        <!-- Theme toggle — exact sun/moon SVGs from design -->
+        <button class="bdy-icon-btn" ng-click="c.toggleTheme()" title="Toggle theme">
+          <!-- Sun icon (shown in dark mode) — exact from design -->
+          <svg ng-show="c.dark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.2"/>
+            <path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>
+          </svg>
+          <!-- Moon icon (shown in light mode) — exact from design -->
+          <svg ng-hide="c.dark" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ HOME VIEW ============ -->
+    <div class="bdy-stage" ng-show="c.view === 'home'">
+      <div class="bdy-home">
+
+        <div class="bdy-greeting">
+          <!-- Greeting spark mark — exact sparkSVG(42) from design -->
+          <svg class="bdy-greet-mark" viewBox="0 0 32 32" width="42" height="42" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+            <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+          </svg>
+          <h1 class="bdy-greeting-text">Hey there, {{c.firstName}}</h1>
+        </div>
+
+        <div class="bdy-sub-heading">How can I help you today?</div>
+
+        <!-- Home composer -->
+        <div class="bdy-composer">
+          <textarea class="bdy-field"
+                    id="bdy-home-field"
+                    rows="1"
+                    placeholder="Ask Buddy anything…"
+                    ng-model="c.homeInput"
+                    ng-keydown="c.homeKeyDown($event)"></textarea>
+          <div class="bdy-composer-row">
+            <div class="bdy-composer-left">
+              <span class="bdy-model-pill">
+                Buddy 1.0
+                <span class="bdy-effort">Standard</span>
+                <!-- Chevron-down from design -->
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </span>
+            </div>
+            <div class="bdy-composer-right">
+              <!-- Send — up-arrow from design (homeSend / dockSend) -->
+              <button class="bdy-send-btn" ng-click="c.homeSubmit()" ng-disabled="!c.homeInput.trim()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick-action chips — icons injected from client script as SVG strings -->
+        <div class="bdy-chips">
+          <button class="bdy-chip"
+                  ng-repeat="chip in c.chips track by $index"
+                  ng-click="c.startConversation(chip.prompt)">
+            <span class="bdy-chip-icon" ng-bind-html="chip.icon"></span>
+            {{chip.label}}
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ THREAD VIEW ============ -->
+    <div class="bdy-thread-wrap" ng-show="c.view === 'thread'">
+
+      <div class="bdy-thread" id="bdy-thread">
+        <div class="bdy-thread-inner">
+
+          <!-- ---- Each message ---- -->
+          <div ng-repeat="msg in c.messages track by $index"
+               class="bdy-msg-row"
+               ng-class="msg.role === 'user' ? 'bdy-user-row' : 'bdy-bot-row'">
+
+            <!-- Bot avatar — exact sparkSVG(20) from design -->
+            <div class="bdy-bot-avatar" ng-show="msg.role === 'bot'">
+              <svg viewBox="0 0 32 32" width="20" height="20" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+                <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+              </svg>
+            </div>
+
+            <!-- Bubble -->
+            <div class="bdy-bubble" ng-class="msg.role === 'user' ? 'bdy-bubble-user' : 'bdy-bubble-bot'">
+
+              <!-- Plain user text -->
+              <div ng-if="msg.role === 'user'" class="bdy-bubble-text">{{msg.text}}</div>
+
+              <!-- Bot: text (html) -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'text'" class="bdy-bubble-text" ng-bind-html="msg.html"></div>
+
+              <!-- Bot: request / incident cards -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'cards'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <div class="bdy-req-card" ng-repeat="card in msg.cards track by $index">
+                  <!-- Card icon — SVG string from client script ic object -->
+                  <span class="bdy-rc-icon" ng-bind-html="card.icon"></span>
+                  <span class="bdy-rc-main">
+                    <div class="bdy-rc-title">{{card.title}}</div>
+                    <div class="bdy-rc-sub">{{card.sub}}</div>
+                  </span>
+                  <span class="bdy-rc-status" ng-class="'bdy-status-' + card.statusKey">{{card.statusText}}</span>
+                </div>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+              <!-- Bot: ordered steps -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'steps'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <ol class="bdy-steps">
+                  <li ng-repeat="step in msg.steps track by $index" ng-bind-html="step"></li>
+                </ol>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+              <!-- Bot: bullet list -->
+              <div ng-if="msg.role === 'bot' && msg.type === 'list'">
+                <p ng-if="msg.intro" class="bdy-bubble-intro">{{msg.intro}}</p>
+                <ul class="bdy-bullet-list">
+                  <li ng-repeat="item in msg.items track by $index" ng-bind-html="item"></li>
+                </ul>
+                <p ng-if="msg.outro" class="bdy-bubble-outro">{{msg.outro}}</p>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- ---- Thinking dots — same spark avatar as bot messages ---- -->
+          <div class="bdy-msg-row bdy-bot-row" ng-show="c.thinking">
+            <div class="bdy-bot-avatar">
+              <svg viewBox="0 0 32 32" width="20" height="20" fill="var(--bdy-accent)" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13 6 C17.08 13.92 17.08 13.92 25 18 C17.08 22.08 17.08 22.08 13 30 C8.92 22.08 8.92 22.08 1 18 C8.92 13.92 8.92 13.92 13 6 Z"/>
+                <path d="M25.5 2.3 C27.268 5.732 27.268 5.732 30.7 7.5 C27.268 9.268 27.268 9.268 25.5 12.7 C23.732 9.268 23.732 9.268 20.3 7.5 C23.732 5.732 23.732 5.732 25.5 2.3 Z"/>
+              </svg>
+            </div>
+            <div class="bdy-bubble bdy-bubble-bot bdy-thinking-bubble">
+              <span class="bdy-dot"></span>
+              <span class="bdy-dot"></span>
+              <span class="bdy-dot"></span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Thread composer (dock) -->
+      <div class="bdy-dock">
+        <div class="bdy-dock-inner">
+          <textarea class="bdy-field bdy-dock-field"
+                    id="bdy-dock-field"
+                    rows="1"
+                    placeholder="Reply to Buddy…"
+                    ng-model="c.dockInput"
+                    ng-keydown="c.dockKeyDown($event)"></textarea>
+          <div class="bdy-composer-row">
+            <div class="bdy-composer-left">
+              <span class="bdy-model-pill">Buddy 1.0</span>
+            </div>
+            <div class="bdy-composer-right">
+              <!-- Send — same up-arrow as home composer -->
+              <button class="bdy-send-btn"
+                      ng-click="c.dockSubmit()"
+                      ng-disabled="!c.dockInput.trim() || c.thinking">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /thread-wrap -->
+
+  </main>
+</div>]]></template>
+  </sp_widget>
+</record_update>

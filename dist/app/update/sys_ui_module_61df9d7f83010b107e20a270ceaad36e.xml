@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<record_update table="sys_ui_module">
+  <sys_ui_module action="INSERT_OR_UPDATE">
+    <sys_id>61df9d7f83010b107e20a270ceaad36e</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_ui_module_61df9d7f83010b107e20a270ceaad36e</sys_update_name>
+    <active>true</active>
+    <application>a5df9d7f83010b107e20a270ceaad351</application>
+    <name>Prompt Libraries</name>
+    <path_relative_to_root>false</path_relative_to_root>
+    <roles>x_643482_my_cust_0.conversations_admin</roles>
+    <sys_domain>global</sys_domain>
+    <sys_domain_path>/</sys_domain_path>
+    <table>x_643482_my_cust_0_prompt_library</table>
+    <uncancelable>false</uncancelable>
+  </sys_ui_module>
+</record_update>

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<record_update table="sys_ws_definition">
+  <sys_ws_definition action="INSERT_OR_UPDATE">
+    <sys_id>a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_ws_definition_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4</sys_update_name>
+    <active>true</active>
+    <base_uri>/api/x_643482_my_cust_0/github_webhook</base_uri>
+    <consumes>application/json,application/xml,text/xml</consumes>
+    <consumes_customized>false</consumes_customized>
+    <default_version>No active default version</default_version>
+    <doc_link/>
+    <enforce_acl>cf9d01d3e73003009d6247e603f6a990</enforce_acl>
+    <is_versioned>false</is_versioned>
+    <name>GitHub Webhook Receiver</name>
+    <namespace>x_643482_my_cust_0</namespace>
+    <produces>application/json,application/xml,text/xml</produces>
+    <produces_customized>false</produces_customized>
+    <service_id>github_webhook</service_id>
+    <short_description/>
+    <sys_policy/>
+  </sys_ws_definition>
+</record_update>

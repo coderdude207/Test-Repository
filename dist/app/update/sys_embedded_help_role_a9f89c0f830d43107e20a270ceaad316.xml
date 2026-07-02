@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<record_update table="sys_embedded_help_role">
+  <sys_embedded_help_role action="INSERT_OR_UPDATE">
+    <sys_id>a9f89c0f830d43107e20a270ceaad316</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_embedded_help_role_a9f89c0f830d43107e20a270ceaad316</sys_update_name>
+    <order>1000</order>
+    <role>e1f89c0f830d43107e20a270ceaad314</role>
+  </sys_embedded_help_role>
+</record_update>

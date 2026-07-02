@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<record_update table="sys_ui_module">
+  <sys_ui_module action="INSERT_OR_UPDATE">
+    <sys_id>5a3cd9b783010b107e20a270ceaad3f8</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_ui_module_5a3cd9b783010b107e20a270ceaad3f8</sys_update_name>
+    <active>true</active>
+    <application>563cd9b783010b107e20a270ceaad3e8</application>
+    <name>Conversations Messages</name>
+    <path_relative_to_root>false</path_relative_to_root>
+    <roles>x_643482_my_cust_0.conversations_admin</roles>
+    <sys_domain>global</sys_domain>
+    <sys_domain_path>/</sys_domain_path>
+    <table>x_643482_my_cust_0_conversations_messages</table>
+    <uncancelable>false</uncancelable>
+  </sys_ui_module>
+</record_update>

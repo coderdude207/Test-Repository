@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update>
+  <sys_ws_operation action="DELETE">
+    <sys_id>69b5bc5560d647f880babb78edc559cc</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <web_service_version>llm-proxy-api-v1</web_service_version>
+    <name>Issue Token</name>
+    <operation_uri>/token</operation_uri>
+    <http_method>GET</http_method>
+    <active>true</active>
+    <requires_authentication>true</requires_authentication>
+    <requires_acl_authorization>false</requires_acl_authorization>
+    <script><![CDATA[(function process(request, response) {
+    if (!gs.isLoggedIn()) {
+        response.setStatus(401);
+        response.setContentType('application/json');
+        response.getStreamOutput().print(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+    }
+
+    var helper = new x_643482_my_cust_0.LLMProxyHelper();
+    var token = helper.issueToken();
+
+    // Ollama-specific properties take precedence; fall back to generic llm.chat.* values
+    var endpoint = gs.getProperty('llm.ollama.endpoint', '') || gs.getProperty('llm.chat.endpoint', '');
+    var model    = gs.getProperty('llm.ollama.model', '')    || gs.getProperty('llm.chat.model', '');
+
+    response.setStatus(200);
+    response.setContentType('application/json');
+    response.getStreamOutput().print(JSON.stringify({
+        token: token,
+        expires_in: 60,
+        endpoint: endpoint,
+        model: model
+    }));
+})(request, response);
+]]></script>
+  </sys_ws_operation>
+<sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="My Custom AI Agent">9df85c0f830d43107e20a270ceaad3a1</application>
+        <file_path/>
+        <instance_id>acee3a133bdb9ad40fd412c5e4e45ac4</instance_id>
+        <instance_name>dev293427</instance_name>
+        <name>sys_ws_operation_69b5bc5560d647f880babb78edc559cc</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update&gt;
+  &lt;sys_ws_operation action="INSERT_OR_UPDATE"&gt;
+    &lt;sys_id&gt;69b5bc5560d647f880babb78edc559cc&lt;/sys_id&gt;
+    &lt;sys_scope display_value="x_643482_my_cust_0"&gt;9df85c0f830d43107e20a270ceaad3a1&lt;/sys_scope&gt;
+    &lt;web_service_version&gt;llm-proxy-api-v1&lt;/web_service_version&gt;
+    &lt;name&gt;Issue Token&lt;/name&gt;
+    &lt;operation_uri&gt;/token&lt;/operation_uri&gt;
+    &lt;http_method&gt;GET&lt;/http_method&gt;
+    &lt;active&gt;true&lt;/active&gt;
+    &lt;requires_authentication&gt;true&lt;/requires_authentication&gt;
+    &lt;requires_acl_authorization&gt;false&lt;/requires_acl_authorization&gt;
+    &lt;script&gt;&lt;![CDATA[(function process(request, response) {
+    if (!gs.isLoggedIn()) {
+        response.setStatus(401);
+        response.setContentType('application/json');
+        response.getStreamOutput().print(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+    }
+
+    var helper = new x_643482_my_cust_0.LLMProxyHelper();
+    var token = helper.issueToken();
+
+    // Ollama-specific properties take precedence; fall back to generic llm.chat.* values
+    var endpoint = gs.getProperty('llm.ollama.endpoint', '') || gs.getProperty('llm.chat.endpoint', '');
+    var model    = gs.getProperty('llm.ollama.model', '')    || gs.getProperty('llm.chat.model', '');
+
+    response.setStatus(200);
+    response.setContentType('application/json');
+    response.getStreamOutput().print(JSON.stringify({
+        token: token,
+        expires_in: 60,
+        endpoint: endpoint,
+        model: model
+    }));
+})(request, response);
+]]&gt;&lt;/script&gt;
+  &lt;/sys_ws_operation&gt;
+&lt;/record_update&gt;</payload>
+        <payload_hash>-998177677</payload_hash>
+        <record_name>Issue Token</record_name>
+        <reverted_from/>
+        <source>d3131863834947107e20a270ceaad3fc</source>
+        <source_table>sys_upgrade_history</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-30 04:37:21</sys_created_on>
+        <sys_id>37135863834947107e20a270ceaad360</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>19e772c21a50000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-30 04:37:21</sys_updated_on>
+        <type>Scripted REST Resource</type>
+        <update_guid>f3135863bb494710a7112536921c5060</update_guid>
+        <update_guid_history>f3135863bb494710a7112536921c5060:-998177677</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete/>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2026-05-30 04:50:25</sys_created_on>
+        <sys_db_object display_value="" name="sys_ws_operation">sys_ws_operation</sys_db_object>
+        <sys_id>0680958fa82b4b17b09172ad88e63139</sys_id>
+        <sys_metadata>69b5bc5560d647f880babb78edc559cc</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Issue Token</sys_name>
+        <sys_package display_value="My Custom AI Agent" source="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="My Custom AI Agent">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+        <sys_scope_delete display_value="">41152793b93a4730a52e05c4a750f900</sys_scope_delete>
+        <sys_update_name>sys_ws_operation_69b5bc5560d647f880babb78edc559cc</sys_update_name>
+        <sys_update_version display_value="sys_ws_operation_69b5bc5560d647f880babb78edc559cc">37135863834947107e20a270ceaad360</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2026-05-30 04:50:25</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

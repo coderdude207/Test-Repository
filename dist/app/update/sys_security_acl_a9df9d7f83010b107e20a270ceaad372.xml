@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<record_update table="sys_security_acl">
+  <sys_security_acl action="INSERT_OR_UPDATE">
+    <sys_id>a9df9d7f83010b107e20a270ceaad372</sys_id>
+    <sys_scope display_value="x_643482_my_cust_0">9df85c0f830d43107e20a270ceaad3a1</sys_scope>
+    <sys_update_name>sys_security_acl_a9df9d7f83010b107e20a270ceaad372</sys_update_name>
+    <active>true</active>
+    <admin_overrides>true</admin_overrides>
+    <advanced>false</advanced>
+    <applies_to/>
+    <condition/>
+    <decision_type>allow</decision_type>
+    <description>Default access control on x_643482_my_cust_0_prompt_library</description>
+    <local_or_existing>Existing</local_or_existing>
+    <name>x_643482_my_cust_0_prompt_library</name>
+    <operation>create</operation>
+    <script/>
+    <security_attribute/>
+    <type>record</type>
+  </sys_security_acl>
+</record_update>
